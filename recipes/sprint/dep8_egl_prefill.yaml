@@ -1,4 +1,4 @@
-name: tep8_egl_decode_only2
+name: dep8_egl_prefill
 
 model:
   path: "kimi-k25-nvfp4"
@@ -16,50 +16,41 @@ resources:
 backend:
   type: trtllm
   aggregated_environment:
-    TLLM_LOG_LEVEL: "INFO"
     TRTLLM_SERVER_DISABLE_GC: "1"
     TRTLLM_WORKER_DISABLE_GC: "1"
-    TRTLLM_ENABLE_PDL: "1"
-    ENROOT_ALLOW_DEV: "yes"
     NCCL_GRAPH_MIXING_SUPPORT: "0"
-    TRTLLM_FORCE_COMM_METHOD: "NVLINK_TWO_SIDED"
-    ENABLE_CONFIGURABLE_MOE: "1"
-    TLLM_OVERRIDE_LAYER_NUM: "61"
+    TRTLLM_ENABLE_PDL: "1"
     TLLM_SPEC_DECODE_FORCE_NUM_ACCEPTED_TOKENS: "2"
   trtllm_config:
     aggregated:
-      allreduce_strategy: AUTO
-      max_num_tokens: 4096
+      max_batch_size: 2
+      max_num_tokens: 16384
       enable_chunked_prefill: true
-      disable_overlap_scheduler: false
-      cuda_graph_config:
-        batch_sizes: [1, 2, 4, 8, 16]
-        enable_padding: true
-      enable_attention_dp: false
-      kv_cache_config:
-        dtype: fp8
-        enable_block_reuse: true
-        free_gpu_memory_fraction: 0.7
-        tokens_per_block: 32
-      max_batch_size: 8
-      max_seq_len: 167200
+      max_seq_len: 167000
+      tensor_parallel_size: 8
+      moe_expert_parallel_size: 8
+      enable_attention_dp: true
+      pipeline_parallel_size: 1
+      num_postprocess_workers: 4
+      print_iter_log: true
+      stream_interval: 1
+      trust_remote_code: true
+      cuda_graph_config: null
+      disable_overlap_scheduler: true
       moe_config:
-        backend: CUTEDSL
-        max_num_tokens: 4096
-        use_low_precision_moe_combine: true
+        backend: TRTLLM
       nvfp4_gemm_config:
         allowed_backends: [cutlass, cublaslt, cutedsl, cuda_core]
-      moe_expert_parallel_size: 8
-      num_postprocess_workers: 8
-      print_iter_log: true
-      stream_interval: 100
-      tensor_parallel_size: 8
-      trust_remote_code: true
+      kv_cache_config:
+        enable_block_reuse: true
+        free_gpu_memory_fraction: 0.6
+        dtype: fp8
+        tokens_per_block: 32
       speculative_config:
         decoding_type: Eagle
         max_draft_len: 3
-        speculative_model_dir: /speculative-model
         allow_advanced_sampling: true
+        speculative_model_dir: /speculative-model
 
 benchmark:
   type: "prefill"
@@ -70,7 +61,7 @@ frontend:
   type: dynamo
   enable_multiple_frontends: false
   args:
-    router-mode: "round-robin"
+    router-mode: "kv"
     router-reset-states: true
 
 health_check:

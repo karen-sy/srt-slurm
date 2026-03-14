@@ -126,14 +126,14 @@ class TestPrefillRunner:
         assert any("prefill_dataset_dir" in e for e in errors)
 
     def test_recipe_loads(self):
-        """tep8_egl_decode_only2 recipe parses without error."""
+        """dep8_egl_prefill recipe parses without error."""
         from pathlib import Path
 
         from srtctl.core.schema import SrtConfig
 
-        recipe = Path(__file__).parent.parent / "recipes" / "sprint" / "tep8_egl_decode_only2.yaml"
+        recipe = Path(__file__).parent.parent / "recipes" / "sprint" / "dep8_egl_prefill.yaml"
         config = SrtConfig.from_yaml(recipe)
-        assert config.name == "tep8_egl_decode_only2"
+        assert config.name == "dep8_egl_prefill"
         assert config.benchmark.type == "prefill"
         assert config.benchmark.prefill_concurrencies == [1, 2, 4, 8, 16, 32, 64]
         assert config.benchmark.prefill_dataset_dir == "together-ai-basic-no-delays_1osl/splits"
