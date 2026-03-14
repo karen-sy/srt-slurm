@@ -18,15 +18,15 @@ get_timing() {
     local conc=$1
     case "$conc" in
         1)   echo "120 5"   ;;
-        2)   echo "180 10"  ;;
-        4)   echo "240 20"  ;;
-        8)   echo "360 40"  ;;
-        10)  echo "330 50"  ;;
-        16)  echo "480 80"  ;;
-        25)  echo "480 125" ;;
-        32)  echo "540 160" ;;
-        50)  echo "600 250" ;;
-        64)  echo "600 300" ;;
+        2)   echo "120 10"  ;;
+        4)   echo "120 20"  ;;
+        8)   echo "240 40"  ;;
+        10)  echo "210 50"  ;;
+        16)  echo "360 80"  ;;
+        25)  echo "360 125" ;;
+        32)  echo "420 160" ;;
+        50)  echo "480 250" ;;
+        64)  echo "480 300" ;;
         *)   # Formula fallback for other values
              local ramp=$(( conc * 5 < 300 ? conc * 5 : 300 ))
              local dur=$(( ramp * 2 + 60 ))
