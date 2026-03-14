@@ -188,6 +188,7 @@ class ClusterConfig:
     srtctl_root: str | None = None
     output_dir: str | None = None  # Custom output directory for job logs
     model_paths: dict[str, str] | None = None
+    dataset_paths: dict[str, str] | None = None
     containers: dict[str, str] | None = None
     cloud: dict[str, str] | None = None
     # Cluster-level container mounts (host_path -> container_path)
