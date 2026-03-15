@@ -131,7 +131,15 @@ def start_nats(binary_path: str = "/configs/nats-server") -> subprocess.Popen:
         raise FileNotFoundError(f"NATS binary not found: {binary_path}")
 
     logger.info("Starting NATS server...")
-    cmd = [binary_path, "-js"]
+
+    # Create NATS config file with larger max_payload for disaggregated serving
+    # 16MB to accommodate large ISL (256K+ tokens) and base64-encoded prompt embeddings
+    nats_config_path = "/tmp/nats.conf"
+    with open(nats_config_path, "w") as f:
+        f.write("max_payload: 16777216\n")  # 16MB
+        f.write("jetstream {}\n")
+
+    cmd = [binary_path, "-c", nats_config_path]
 
     proc = subprocess.Popen(
         cmd,
