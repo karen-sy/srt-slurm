@@ -197,7 +197,7 @@ class TRTLLMProtocol:
         # Users specify speculative_model in ModelConfig, which gets mounted at /speculative-model
         if "speculative_config" in config and runtime.speculative_model_path:
             config["speculative_config"] = dict(config["speculative_config"])
-            config["speculative_config"]["speculative_model_dir"] = "/speculative-model"
+            config["speculative_config"]["speculative_model_dir"] = str(runtime.container_speculative_model_path)
 
         # Write config to host path (log_dir)
         config_filename = f"trtllm_config_{mode}.yaml"
@@ -207,7 +207,7 @@ class TRTLLMProtocol:
         # Use container paths for the command
         # (model_path is mounted to /model, log_dir is mounted to /logs)
         container_config_path = Path("/logs") / config_filename
-        container_model_path = Path("/model")
+        container_model_path = runtime.container_model_path
 
         cmd = [
             "trtllm-llmapi-launch",

@@ -131,6 +131,16 @@ def resolve_config_with_defaults(user_config: dict[str, Any], cluster_config: di
         model["speculative_model"] = resolved_speculative
         logger.debug(f"Resolved speculative model alias '{speculative_model}' -> '{resolved_speculative}'")
 
+    # Resolve dataset path alias
+    benchmark = config.get("benchmark", {})
+    dataset_dir = benchmark.get("prefill_dataset_dir", "")
+    dataset_paths = cluster_config.get("dataset_paths")
+    if dataset_paths and dataset_dir and dataset_dir in dataset_paths:
+        resolved_dataset = dataset_paths[dataset_dir]
+        benchmark["prefill_dataset_dir"] = resolved_dataset
+        config["benchmark"] = benchmark
+        logger.debug(f"Resolved dataset alias '{dataset_dir}' -> '{resolved_dataset}'")
+
     # Resolve container alias
     container = model.get("container", "")
 

@@ -188,6 +188,7 @@ class ClusterConfig:
     srtctl_root: str | None = None
     output_dir: str | None = None  # Custom output directory for job logs
     model_paths: dict[str, str] | None = None
+    dataset_paths: dict[str, str] | None = None
     containers: dict[str, str] | None = None
     cloud: dict[str, str] | None = None
     # Cluster-level container mounts (host_path -> container_path)
@@ -224,6 +225,7 @@ class BenchmarkType(str, Enum):
     MMLU = "mmlu"
     GPQA = "gpqa"
     LONGBENCHV2 = "longbenchv2"
+    PREFILL = "prefill"
 
 
 class ProfilingType(str, Enum):
@@ -377,6 +379,8 @@ class ModelConfig:
     container: str
     precision: str
     speculative_model: str | None = None
+    subpath: str | None = None
+    speculative_subpath: str | None = None
 
     Schema: ClassVar[type[Schema]] = Schema
 
@@ -540,6 +544,9 @@ class BenchmarkConfig:
     ttft_threshold_ms: int | None = None  # Goodput TTFT threshold in ms (default: 2000)
     itl_threshold_ms: int | None = None  # Goodput ITL threshold in ms (default: 25)
     trace_file: str | None = None  # Custom trace file path (overrides mooncake_workload)
+    # Prefill benchmark fields (long ISL, short OSL — measures prefill throughput)
+    prefill_concurrencies: list[int] | None = None  # Concurrency levels for prefill benchmark
+    prefill_dataset_dir: str | None = None  # Path to dir containing conc_N.jsonl split files
 
     def get_concurrency_list(self) -> list[int]:
         if self.concurrencies is None:

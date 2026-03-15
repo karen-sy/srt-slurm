@@ -1,0 +1,74 @@
+name: dep8_egl_prefill
+
+model:
+  path: "kimi-k25-nvfp4"
+  subpath: "snapshots/e4e908c073784de20ad3af0be653421f1088922d"
+  container: "kimi-bench-trtllm"
+  precision: "fp4"
+  speculative_model: "kimi-eagle"
+  speculative_subpath: "snapshots/0b0c6ac039089ad2c2418c91c039553381a302d9"
+
+resources:
+  gpu_type: "gb200"
+  agg_nodes: 2
+  agg_workers: 1
+  gpus_per_agg: 8
+  gpus_per_node: 4
+
+backend:
+  type: trtllm
+  aggregated_environment:
+    TRTLLM_SERVER_DISABLE_GC: "1"
+    TRTLLM_WORKER_DISABLE_GC: "1"
+    NCCL_GRAPH_MIXING_SUPPORT: "0"
+    TRTLLM_ENABLE_PDL: "1"
+    TLLM_SPEC_DECODE_FORCE_NUM_ACCEPTED_TOKENS: "2"
+  trtllm_config:
+    aggregated:
+      max_batch_size: 2
+      max_num_tokens: 16384
+      enable_chunked_prefill: true
+      max_seq_len: 167000
+      tensor_parallel_size: 8
+      moe_expert_parallel_size: 8
+      enable_attention_dp: true
+      pipeline_parallel_size: 1
+      num_postprocess_workers: 4
+      print_iter_log: true
+      stream_interval: 1
+      trust_remote_code: true
+      cuda_graph_config: null
+      disable_overlap_scheduler: true
+      moe_config:
+        backend: TRTLLM
+      nvfp4_gemm_config:
+        allowed_backends: [cutlass, cublaslt, cutedsl, cuda_core]
+      kv_cache_config:
+        enable_block_reuse: true
+        free_gpu_memory_fraction: 0.6
+        dtype: fp8
+        tokens_per_block: 32
+      speculative_config:
+        decoding_type: Eagle
+        max_draft_len: 3
+        allow_advanced_sampling: true
+        speculative_model_dir: /speculative-model
+
+benchmark:
+  type: "prefill"
+  prefill_concurrencies: [1, 2, 4, 8, 16, 32, 64]
+  prefill_dataset_dir: "together-ai-basic-no-delays_1osl/splits"
+
+frontend:
+  type: dynamo
+  enable_multiple_frontends: false
+  args:
+    router-mode: "kv"
+    router-reset-states: true
+
+health_check:
+  max_attempts: 500
+  interval_seconds: 10
+
+dynamo:
+  install: false
