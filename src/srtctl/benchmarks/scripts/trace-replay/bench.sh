@@ -61,7 +61,7 @@ echo "=============================================="
 
 # Install aiperf if not present
 echo "Installing aiperf..."
-pip install "aiperf @ git+https://github.com/ai-dynamo/aiperf.git@8db6e96e978720fc597293bd84e705aa82db233e"  
+pip install "aiperf @ git+https://github.com/ai-dynamo/aiperf.git@8db6e96e978720fc597293bd84e705aa82db233e"
 pip install tiktoken
 
 # Get trace file stats

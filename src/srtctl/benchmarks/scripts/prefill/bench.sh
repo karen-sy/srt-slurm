@@ -40,10 +40,8 @@ get_timing() {
 
 ulimit -n 600000 2>/dev/null || ulimit -n 65536 2>/dev/null || true
 
-# Install pinned aiperf + tiktoken (overrides whatever is in the container)
-pip install --quiet --force-reinstall \
-    "aiperf @ git+https://github.com/ai-dynamo/aiperf.git@8db6e96e978720fc597293bd84e705aa82db233e" \
-    "tiktoken"
+# Install pinned aiperf (includes tiktoken; overrides whatever is in the container)
+uv pip install --upgrade --force-reinstall git+https://github.com/ai-dynamo/aiperf.git@b1dd72f2a1ca58b6e72bbaba66c1d76114b856a0
 
 EPOCH=$(date +%s)
 RESULT_DIR="/logs/prefill_${EPOCH}"
