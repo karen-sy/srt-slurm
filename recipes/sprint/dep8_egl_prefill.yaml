@@ -2,9 +2,11 @@ name: dep8_egl_prefill
 
 model:
   path: "kimi-k25-nvfp4"
+  subpath: "snapshots/e4e908c073784de20ad3af0be653421f1088922d"
   container: "kimi-bench-trtllm"
   precision: "fp4"
   speculative_model: "kimi-eagle"
+  speculative_subpath: "snapshots/0b0c6ac039089ad2c2418c91c039553381a302d9"
 
 resources:
   gpu_type: "gb200"

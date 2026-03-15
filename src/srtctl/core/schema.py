@@ -379,6 +379,8 @@ class ModelConfig:
     container: str
     precision: str
     speculative_model: str | None = None
+    subpath: str | None = None
+    speculative_subpath: str | None = None
 
     Schema: ClassVar[type[Schema]] = Schema
 

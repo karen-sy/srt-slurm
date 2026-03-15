@@ -2,9 +2,11 @@ name: tep4_tep4_egl_trace
 
 model:
   path: "kimi-k25-nvfp4"
+  subpath: "snapshots/e4e908c073784de20ad3af0be653421f1088922d"
   container: "kimi-bench-trtllm"  # trtllm container with attention dp
   precision: "fp4"
   speculative_model: "kimi-eagle"  # Mounted at /speculative-model in container
+  speculative_subpath: "snapshots/0b0c6ac039089ad2c2418c91c039553381a302d9"
 
 resources:
   gpu_type: "gb200"
