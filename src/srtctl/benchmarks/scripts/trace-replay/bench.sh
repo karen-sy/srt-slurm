@@ -69,9 +69,8 @@ echo "=============================================="
 
 # Force install aiperf to right branch
 echo "Installing aiperf..."
-pip install "aiperf @ git+https://github.com/ai-dynamo/aiperf.git@8db6e96e978720fc597293bd84e705aa82db233e"  
+pip install "aiperf @ git+https://github.com/ai-dynamo/aiperf.git@b1dd72f2a1ca58b6e72bbaba66c1d76114b856a0"  
 pip install tiktoken
-
 # Get trace file stats
 TRACE_LINES=$(wc -l < "${TRACE_FILE}")
 echo "Trace contains ${TRACE_LINES} requests"
