@@ -24,7 +24,7 @@ backend:
   trtllm_config:
     aggregated:
       max_batch_size: 2
-      max_num_tokens: 16384
+      max_num_tokens: 65536
       enable_chunked_prefill: true
       max_seq_len: 167000
       tensor_parallel_size: 8
