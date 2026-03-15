@@ -1,4 +1,4 @@
-name: dep8_egl_prefill
+name: dep4_egl_prefill_cutedsl
 
 model:
   path: "kimi-k25-nvfp4"
@@ -10,9 +10,9 @@ model:
 
 resources:
   gpu_type: "gb200"
-  agg_nodes: 2
+  agg_nodes: 1
   agg_workers: 1
-  gpus_per_agg: 8
+  gpus_per_agg: 4
   gpus_per_node: 4
 
 backend:
@@ -29,8 +29,8 @@ backend:
       max_num_tokens: 16384
       enable_chunked_prefill: true
       max_seq_len: 167000
-      tensor_parallel_size: 8
-      moe_expert_parallel_size: 8
+      tensor_parallel_size: 4
+      moe_expert_parallel_size: 4
       enable_attention_dp: true
       pipeline_parallel_size: 1
       num_postprocess_workers: 4
@@ -40,9 +40,86 @@ backend:
       cuda_graph_config: null
       disable_overlap_scheduler: true
       moe_config:
-        backend: TRTLLM
+        backend: CUTEDSL
       nvfp4_gemm_config:
         allowed_backends: [cutlass, cublaslt, cutedsl, cuda_core]
+      torch_compile_config:
+        capture_num_tokens:
+          - 1
+          - 2
+          - 4
+          - 8
+          - 16
+          - 32
+          - 64
+          - 128
+          - 256
+          - 512
+          - 768
+          - 1024
+          - 1280
+          - 1536
+          - 1792
+          - 2048
+          - 2304
+          - 2560
+          - 2816
+          - 3072
+          - 3328
+          - 3584
+          - 3840
+          - 4096
+          - 4352
+          - 4608
+          - 4864
+          - 5120
+          - 5376
+          - 5632
+          - 5888
+          - 6144
+          - 6400
+          - 6656
+          - 6912
+          - 7168
+          - 7424
+          - 7680
+          - 7936
+          - 8192
+          - 8448
+          - 8704
+          - 8960
+          - 9216
+          - 9472
+          - 9728
+          - 9984
+          - 10240
+          - 10496
+          - 10752
+          - 11008
+          - 11264
+          - 11520
+          - 11776
+          - 12032
+          - 12288
+          - 12544
+          - 12800
+          - 13056
+          - 13312
+          - 13568
+          - 13824
+          - 14080
+          - 14336
+          - 14592
+          - 14848
+          - 15104
+          - 15360
+          - 15616
+          - 15872
+          - 16128
+          - 16384
+        enable_piecewise_cuda_graph: true
+        enable_userbuffers: false
+        max_num_streams: 2
       kv_cache_config:
         enable_block_reuse: true
         free_gpu_memory_fraction: 0.6

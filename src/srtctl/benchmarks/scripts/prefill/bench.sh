@@ -3,13 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # Prefill benchmark: trace-replay on together-ai-basic-no-delays_1osl dataset.
-# Args: endpoint model_name splits_dir concurrencies(x-sep) total_gpus
+# Args: endpoint model_name splits_dir concurrencies(x-sep) total_gpus tokenizer_path
+set -euo pipefail
 
 ENDPOINT=$1
 MODEL_NAME=$2
 SPLITS_DIR=$3          # container path, e.g. /prefill-data
 CONCURRENCIES=$4       # e.g. "1x10x25x50"
 TOTAL_GPUS=${5:-0}
+TOKENIZER_PATH=${6:-$MODEL_NAME}
 
 IFS='x' read -r -a CONCURRENCY_LIST <<< "$CONCURRENCIES"
 
@@ -38,11 +40,20 @@ get_timing() {
 
 ulimit -n 600000 2>/dev/null || ulimit -n 65536 2>/dev/null || true
 
+# Install pinned aiperf + tiktoken (overrides whatever is in the container)
+pip install --quiet --force-reinstall \
+    "aiperf @ git+https://github.com/ai-dynamo/aiperf.git@8db6e96e978720fc597293bd84e705aa82db233e" \
+    "tiktoken"
+
+EPOCH=$(date +%s)
+RESULT_DIR="/logs/prefill_${EPOCH}"
+mkdir -p "$RESULT_DIR"
+
 # Warmup: synthetic ISL=1000, OSL=1000, concurrency=4, 12 requests
 echo "Running warmup (isl=1000 osl=1000 concurrency=4 count=12)..."
 aiperf profile \
     -m "$MODEL_NAME" \
-    --tokenizer /model/ \
+    --tokenizer "$TOKENIZER_PATH" \
     --tokenizer-trust-remote-code \
     --url "$ENDPOINT" \
     --streaming \
@@ -57,17 +68,13 @@ aiperf profile \
     --extra-inputs "ignore_eos:true" \
     --concurrency 4 \
     --request-count 12 \
-    --warmup-request-count 0 \
+    --warmup-request-count 1 \
     --workers-max 200 \
     --request-timeout-seconds 1200 \
     -H 'Authorization: Bearer NOT USED' \
     -H 'Accept: text/event-stream' \
-    --artifact-dir "/tmp/prefill-warmup"
+    --artifact-dir "${RESULT_DIR}/warmup"
 echo "Warmup complete."
-
-EPOCH=$(date +%s)
-RESULT_DIR="/logs/prefill_${EPOCH}"
-mkdir -p "$RESULT_DIR"
 
 for conc in "${CONCURRENCY_LIST[@]}"; do
     read -r duration_s ramp_s <<< "$(get_timing "$conc")"
@@ -80,10 +87,12 @@ for conc in "${CONCURRENCY_LIST[@]}"; do
 
     aiperf profile \
         -m "$MODEL_NAME" \
-        --tokenizer /model/ \
+        --tokenizer "$TOKENIZER_PATH" \
         --tokenizer-trust-remote-code \
         --url "$ENDPOINT" \
         --streaming \
+        --endpoint-type chat \
+        --endpoint /v1/chat/completions \
         --input-file "$split_file" \
         --custom-dataset-type mooncake_trace \
         --concurrency "$conc" \

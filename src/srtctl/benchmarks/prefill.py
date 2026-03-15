@@ -80,7 +80,7 @@ class PrefillRunner(AIPerfBenchmarkRunner):
         if r.is_disaggregated:
             total_gpus = r.prefill_gpus + r.decode_gpus
         else:
-            total_gpus = (r.agg_nodes or 1) * r.gpus_per_node
+            total_gpus = r.gpus_per_agg * (r.agg_workers or 1)
 
         return [
             "bash",
@@ -90,4 +90,5 @@ class PrefillRunner(AIPerfBenchmarkRunner):
             str(DATASET_MOUNT_PATH),
             concurrencies,
             str(total_gpus),
+            str(runtime.container_model_path),
         ]

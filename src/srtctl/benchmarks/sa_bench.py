@@ -75,7 +75,7 @@ class SABenchRunner(BenchmarkRunner):
             decode_gpus = r.decode_gpus
             total_gpus = prefill_gpus + decode_gpus
         else:
-            total_gpus = (r.agg_nodes or 1) * r.gpus_per_node
+            total_gpus = r.gpus_per_agg * (r.agg_workers or 1)
             prefill_gpus = 0
             decode_gpus = 0
 
