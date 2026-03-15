@@ -5,7 +5,10 @@
 # Trace Replay Benchmark using aiperf
 # Replays requests from a trace file at their original timestamps
 #
-# Usage: bench.sh ENDPOINT MODEL_NAME TRACE_FILE [TTFT_THRESHOLD] [ITL_THRESHOLD]
+# Usage: bench.sh ENDPOINT MODEL_NAME TRACE_FILE [TTFT_THRESHOLD] [ITL_THRESHOLD] [CONCURRENCIES]
+#
+# CONCURRENCIES: x-separated list of concurrency levels (e.g., "1x5x25x50")
+#                Defaults to "1x5x25x50" if not specified
 
 set -e
 
@@ -17,6 +20,10 @@ MODEL_NAME=${2:-"model"}
 TRACE_FILE=$3
 TTFT_THRESHOLD=${4:-2000}
 ITL_THRESHOLD=${5:-25}
+CONCURRENCIES=${6:-"1x5x25x50"}
+
+# Parse concurrency list (x-separated)
+IFS='x' read -r -a CONCURRENCY_LIST <<< "$CONCURRENCIES"
 
 # Validate trace file
 if [ -z "${TRACE_FILE}" ]; then
@@ -57,9 +64,10 @@ echo "Model: ${MODEL_NAME}"
 echo "Trace file: ${TRACE_FILE}"
 echo "TTFT Threshold: ${TTFT_THRESHOLD}ms"
 echo "ITL Threshold: ${ITL_THRESHOLD}ms"
+echo "Concurrencies: ${CONCURRENCIES} (${#CONCURRENCY_LIST[@]} levels)"
 echo "=============================================="
 
-# Install aiperf if not present
+# Force install aiperf to right branch
 echo "Installing aiperf..."
 pip install "aiperf @ git+https://github.com/ai-dynamo/aiperf.git@8db6e96e978720fc597293bd84e705aa82db233e"  
 pip install tiktoken
@@ -98,7 +106,7 @@ echo "$(date '+%Y-%m-%d %H:%M:%S') - Starting benchmark"
 
 # Run aiperf profile with fixed-schedule to replay at original timestamps
 # Use /model/ as tokenizer path (mounted model directory) to avoid HuggingFace download
-for concurrency in 1 5 25 50; do
+for concurrency in "${CONCURRENCY_LIST[@]}"; do
     aiperf profile \
         -m "${MODEL_NAME}" \
         --tokenizer "${MODEL_NAME}" \
@@ -109,8 +117,8 @@ for concurrency in 1 5 25 50; do
         --custom-dataset-type mooncake_trace \
         --prompt-corpus coding \
         --concurrency "${concurrency}" \
-        --concurrency-ramp-duration 60 \
-        --benchmark-duration 1200 \
+        --concurrency-ramp-duration $((5 * concurrency)) \
+        --benchmark-duration 300 \
         --benchmark-grace-period 60 \
         --workers-max 200 \
         --request-timeout-seconds 1200 \

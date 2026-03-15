@@ -540,6 +540,11 @@ class BenchmarkConfig:
     ttft_threshold_ms: int | None = None  # Goodput TTFT threshold in ms (default: 2000)
     itl_threshold_ms: int | None = None  # Goodput ITL threshold in ms (default: 25)
     trace_file: str | None = None  # Custom trace file path (overrides mooncake_workload)
+    # Decode-only benchmark fields
+    seed: int | None = None  # Random seed for reproducible benchmarks (used by decode-only)
+    single_prompt: bool = False  # Use single prompt for all requests (faster warmup, 1 prefill caches for all)
+    decode_concurrency: int | None = None  # Concurrency for decode-only benchmark (default: 1, requests sent as they complete)
+    decode_concurrencies: list[int] | str | None = None  # Sweep concurrencies, e.g. [4, 8, 12, 16] or "4x8x12x16"
 
     def get_concurrency_list(self) -> list[int]:
         if self.concurrencies is None:

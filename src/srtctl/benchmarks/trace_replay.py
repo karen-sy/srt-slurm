@@ -42,6 +42,8 @@ class TraceReplayRunner(AIPerfBenchmarkRunner):
     Optional config fields (in benchmark section):
         - benchmark.ttft_threshold_ms: Goodput TTFT threshold in ms (default: 2000)
         - benchmark.itl_threshold_ms: Goodput ITL threshold in ms (default: 25)
+        - benchmark.concurrencies: List of concurrency levels to sweep (default: [1, 5, 25, 50])
+                                   Can be a list [1, 5, 25, 50] or string "1x5x25x50"
 
     Example config:
         benchmark:
@@ -49,6 +51,7 @@ class TraceReplayRunner(AIPerfBenchmarkRunner):
           trace_file: "traces/conversation_trace.jsonl"  # relative to workspace
           ttft_threshold_ms: 2000
           itl_threshold_ms: 25
+          concurrencies: [1, 5, 25, 50]
 
     The trace file directory is automatically mounted into the container.
     """
@@ -126,6 +129,12 @@ class TraceReplayRunner(AIPerfBenchmarkRunner):
         ttft_threshold = b.ttft_threshold_ms or 2000
         itl_threshold = b.itl_threshold_ms or 25
 
+        # Get concurrency list - use default if not specified
+        concurrency_list = b.get_concurrency_list()
+        if not concurrency_list:
+            concurrency_list = [1, 5, 25, 50]  # Default values
+        concurrencies_str = "x".join(str(c) for c in concurrency_list)
+
         # Build container path for trace file
         trace_path = self._resolve_trace_path(b.trace_file)
         container_trace_path = self.TRACE_MOUNT_PATH / trace_path.name
@@ -138,4 +147,5 @@ class TraceReplayRunner(AIPerfBenchmarkRunner):
             str(container_trace_path),
             str(ttft_threshold),
             str(itl_threshold),
+            concurrencies_str,
         ]
