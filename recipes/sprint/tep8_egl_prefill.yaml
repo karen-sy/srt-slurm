@@ -62,7 +62,7 @@ backend:
 benchmark:
   type: "prefill"
   prefill_concurrencies: [4, 8]
-  prefill_dataset_dir: "/lustre/fsw/coreai_tritoninference_triton3/aflowers/together-ai-basic-no-delays_163k_1osl/splits"
+  prefill_dataset_dir: "together-ai-basic-no-delays_163k_1osl/splits"
 
 frontend:
   type: dynamo
