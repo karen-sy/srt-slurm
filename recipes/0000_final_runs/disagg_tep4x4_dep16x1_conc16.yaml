@@ -6,8 +6,8 @@ model:
   speculative_model: kimi-eagle
 resources:
   gpu_type: gb200
-  prefill_nodes: 8
-  prefill_workers: 8
+  prefill_nodes: 4
+  prefill_workers: 4
   gpus_per_prefill: 4
   decode_nodes: 4
   decode_workers: 1
