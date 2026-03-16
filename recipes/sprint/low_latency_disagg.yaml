@@ -61,7 +61,7 @@ backend:
           - cuda_core
       kv_cache_config:
         enable_block_reuse: true
-        free_gpu_memory_fraction: 0.7
+        free_gpu_memory_fraction: 0.65
         dtype: fp8
         tokens_per_block: 32
       speculative_config:
