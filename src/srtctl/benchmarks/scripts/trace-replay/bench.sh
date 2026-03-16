@@ -14,6 +14,7 @@ set -e
 
 # Ensure Python output is unbuffered for real-time logging
 export PYTHONUNBUFFERED=1
+export AIPERF_RECORD_EXPORT_BATCH_SIZE=3  # Flush profile_export.jsonl after every 3 requests
 
 ENDPOINT=$1
 MODEL_NAME=${2:-"model"}

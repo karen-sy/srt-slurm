@@ -16,20 +16,16 @@ resources:
 backend:
   type: trtllm
   prefill_environment:
-    TLLM_LOG_LEVEL: INFO
-    TRTLLM_SERVER_DISABLE_GC: '1'
-    TRTLLM_WORKER_DISABLE_GC: '1'
-    TRTLLM_ENABLE_PDL: '1'
-    ENROOT_ALLOW_DEV: 'yes'
-    NCCL_GRAPH_MIXING_SUPPORT: '0'
-    TLLM_OVERRIDE_LAYER_NUM: '61'
-    TLLM_SPEC_DECODE_FORCE_NUM_ACCEPTED_TOKENS: '2'
+    TRTLLM_SERVER_DISABLE_GC: "1"
+    TRTLLM_WORKER_DISABLE_GC: "1"
+    NCCL_GRAPH_MIXING_SUPPORT: "0"
+    TRTLLM_ENABLE_PDL: "1"
+    TLLM_SPEC_DECODE_FORCE_NUM_ACCEPTED_TOKENS: "2"
   decode_environment:
     TLLM_LOG_LEVEL: INFO
     TRTLLM_SERVER_DISABLE_GC: '1'
     TRTLLM_WORKER_DISABLE_GC: '1'
     TRTLLM_ENABLE_PDL: '1'
-    ENROOT_ALLOW_DEV: 'yes'
     NCCL_GRAPH_MIXING_SUPPORT: '0'
     TRTLLM_FORCE_COMM_METHOD: NVLINK_TWO_SIDED
     ENABLE_CONFIGURABLE_MOE: '1'
@@ -63,7 +59,7 @@ backend:
           - cuda_core
       kv_cache_config:
         enable_block_reuse: true
-        free_gpu_memory_fraction: 0.7
+        free_gpu_memory_fraction: 0.65
         dtype: fp8
         tokens_per_block: 32
       speculative_config:

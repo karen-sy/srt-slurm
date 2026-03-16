@@ -38,7 +38,6 @@ backend:
         - 2
         - 4
         - 8
-        - 16
         enable_padding: true
       enable_attention_dp: false
       kv_cache_config:
@@ -46,7 +45,7 @@ backend:
         enable_block_reuse: true
         free_gpu_memory_fraction: 0.75
       #   tokens_per_block: 32
-      max_batch_size: 16
+      max_batch_size: 8
 
       moe_config:
         backend: TRTLLM
@@ -71,7 +70,7 @@ backend:
 benchmark:
   type: trace-replay
   trace_file: traces/together-ai-basic-no-delays_119k/dataset.jsonl
-  concurrencies: [16]  
+  concurrencies: [8]  
   ttft_threshold_ms: 5000
   itl_threshold_ms: 20
 
