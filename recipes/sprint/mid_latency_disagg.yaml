@@ -86,7 +86,7 @@ backend:
       kv_cache_config:
         dtype: fp8
         enable_block_reuse: true   
-        free_gpu_memory_fraction: 0.65
+        free_gpu_memory_fraction: 0.75
       max_batch_size: 2
       max_seq_len: 120000
       moe_config:
