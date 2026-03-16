@@ -59,7 +59,7 @@ backend:
           - cuda_core
       kv_cache_config:
         enable_block_reuse: true
-        free_gpu_memory_fraction: 0.75
+        free_gpu_memory_fraction: 0.4
         dtype: fp8
         tokens_per_block: 32
       torch_compile_config:
