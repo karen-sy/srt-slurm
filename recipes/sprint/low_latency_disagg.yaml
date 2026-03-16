@@ -112,7 +112,7 @@ backend:
 benchmark:
   type: trace-replay
   trace_file: traces/together-ai-basic-no-delays_119k/dataset.jsonl
-  concurrencies: [2] #[1, 2, 4, 6, 8]
+  concurrencies: [4, 8]
   ttft_threshold_ms: 3000
   itl_threshold_ms: 7
 
