@@ -78,14 +78,13 @@ backend:
       cache_transceiver_config:
         backend: UCX
         max_tokens_in_buffer: 120000
-      max_num_tokens: 128 # 32 x 4 eagle
+      max_num_tokens: 4  # per rank
       disable_overlap_scheduler: false
       cuda_graph_config:
         batch_sizes:
         - 1
         enable_padding: true
       enable_attention_dp: true
-      enable_lm_head_tp_in_adp: true
       kv_cache_config:
         dtype: fp8
         enable_block_reuse: true
@@ -116,7 +115,7 @@ backend:
 
 benchmark:
   type: trace-replay
-  trace_file: traces/together-ai-basic-no-delays_143k/dataset.jsonl
+  trace_file: traces/together-ai-basic-no-delays_119k/dataset.jsonl
   concurrencies: [32]  
   ttft_threshold_ms: 5000
   itl_threshold_ms: 20
