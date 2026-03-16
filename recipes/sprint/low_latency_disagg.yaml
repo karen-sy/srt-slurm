@@ -63,7 +63,7 @@ backend:
         dtype: fp8
         tokens_per_block: 32
       torch_compile_config:
-	capture_num_tokens:
+        capture_num_tokens:
           - 1
           - 2
           - 4
@@ -104,9 +104,9 @@ backend:
           - 7680
           - 7936
           - 8192
-  	enable_piecewise_cuda_graph: true
-  	enable_userbuffers: false
-  	max_num_streams: 2
+        enable_piecewise_cuda_graph: true
+        enable_userbuffers: false
+        max_num_streams: 2
       speculative_config:
         decoding_type: Eagle
         max_draft_len: 3
