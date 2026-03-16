@@ -1,4 +1,4 @@
-name: tep8_egl_prefill
+name: tep4_egl_prefill
 
 model:
   path: "kimi-k25-nvfp4"
@@ -13,9 +13,9 @@ slurm:
 
 resources:
   gpu_type: "gb200"
-  agg_nodes: 2
+  agg_nodes: 1
   agg_workers: 1
-  gpus_per_agg: 8
+  gpus_per_agg: 4
   gpus_per_node: 4
 
 backend:
@@ -28,13 +28,12 @@ backend:
     TLLM_SPEC_DECODE_FORCE_NUM_ACCEPTED_TOKENS: "2"
   trtllm_config:
     aggregated:
-      allreduce_strategy: MNNVL
       max_batch_size: 8
       max_num_tokens: 8192
       enable_chunked_prefill: true
-      max_seq_len: 167000
-      tensor_parallel_size: 8
-      moe_expert_parallel_size: 8
+      max_seq_len: 169000
+      tensor_parallel_size: 4
+      moe_expert_parallel_size: 4
       enable_attention_dp: false
       pipeline_parallel_size: 1
       num_postprocess_workers: 4
@@ -44,13 +43,13 @@ backend:
       cuda_graph_config: null
       disable_overlap_scheduler: true
       moe_config:
-        backend: CUTLASS
+        backend: TRTLLM
         use_low_precision_moe_combine: true
       nvfp4_gemm_config:
         allowed_backends: [cutlass, cublaslt, cutedsl, cuda_core]
       kv_cache_config:
         enable_block_reuse: true
-        free_gpu_memory_fraction: 0.75
+        free_gpu_memory_fraction: 0.7
         dtype: fp8
         tokens_per_block: 32
       speculative_config:
@@ -61,14 +60,14 @@ backend:
 
 benchmark:
   type: "prefill"
-  prefill_concurrencies: [4, 8]
-  prefill_dataset_dir: "/lustre/fsw/coreai_tritoninference_triton3/aflowers/together-ai-basic-no-delays_163k_1osl/splits"
+  prefill_concurrencies: [8]
+  prefill_dataset_dir: "together-ai-basic-no-delays_1osl/splits"
 
 frontend:
   type: dynamo
   enable_multiple_frontends: false
   args:
-    router-mode: "kv"
+    router-mode: "round-robin"
     router-reset-states: true
 
 health_check:
@@ -80,3 +79,4 @@ dynamo:
 
 infra:
   etcd_nats_dedicated_node: true
+
