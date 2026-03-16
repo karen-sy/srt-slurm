@@ -104,6 +104,12 @@ class RuntimeContext:
     gpus_per_node: int
     network_interface: str | None
 
+    # Container path to the model (usually /model, but may include subpath)
+    container_model_path: Path = field(default_factory=lambda: Path("/model"))
+
+    # Container path to the speculative model (usually /speculative-model, but may include subpath)
+    container_speculative_model_path: Path = field(default_factory=lambda: Path("/speculative-model"))
+
     # Optional speculative model path (for Eagle decoding)
     speculative_model_path: Path | None = None
 
@@ -194,6 +200,16 @@ class RuntimeContext:
             if not speculative_model_path.is_dir():
                 raise ValueError(f"Speculative model path is not a directory: {speculative_model_path}")
 
+        # Compute container model path (may include subpath into mounted dir)
+        container_model_path = Path("/model")
+        if config.model.subpath:
+            container_model_path = container_model_path / config.model.subpath
+
+        # Compute container speculative model path (may include subpath into mounted dir)
+        container_speculative_model_path = Path("/speculative-model")
+        if config.model.speculative_subpath:
+            container_speculative_model_path = container_speculative_model_path / config.model.speculative_subpath
+
         # Build container mounts
         container_mounts: dict[Path, Path] = {
             model_path: Path("/model"),
@@ -242,6 +258,8 @@ class RuntimeContext:
             infra_node_ip=infra_node_ip,
             log_dir=log_dir,
             model_path=model_path,
+            container_model_path=container_model_path,
+            container_speculative_model_path=container_speculative_model_path,
             container_image=container_image,
             speculative_model_path=speculative_model_path,
             gpus_per_node=config.resources.gpus_per_node,
@@ -265,6 +283,8 @@ class RuntimeContext:
             infra_node_ip=infra_node_ip,
             log_dir=log_dir,
             model_path=model_path,
+            container_model_path=container_model_path,
+            container_speculative_model_path=container_speculative_model_path,
             container_image=container_image,
             speculative_model_path=speculative_model_path,
             gpus_per_node=config.resources.gpus_per_node,

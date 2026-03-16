@@ -1,15 +1,17 @@
 name: gen1_tep4_ctx2_tep8egl_disagg_low_latency
 model:
   path: kimi-k25-nvfp4
+  subpath: "snapshots/e4e908c073784de20ad3af0be653421f1088922d"
   container: kimi-bench-trtllm
   precision: fp4
   speculative_model: kimi-eagle
+  speculative_subpath: "snapshots/0b0c6ac039089ad2c2418c91c039553381a302d9"
 resources:
   gpu_type: gb200
   prefill_nodes: 1
   prefill_workers: 1
   gpus_per_prefill: 4
-  decode_nodes: 2
+  decode_nodes: 4
   decode_workers: 2
   gpus_per_decode: 8
   gpus_per_node: 4

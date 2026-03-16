@@ -246,7 +246,7 @@ class SGLangProtocol:
                 "-m",
                 python_module,
                 "--model-path",
-                "/model",
+                str(runtime.container_model_path),
                 "--served-model-name",
                 served_model_name,
                 "--host",
