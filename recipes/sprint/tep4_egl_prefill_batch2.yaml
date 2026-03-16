@@ -30,11 +30,11 @@ backend:
     aggregated:
       cache_transceiver_config:
         backend: UCX
-        max_tokens_in_buffer: 148000
+        max_tokens_in_buffer: 120000
       max_batch_size: 2
       max_num_tokens: 8192
       enable_chunked_prefill: true
-      max_seq_len: 148000
+      max_seq_len: 120000
       tensor_parallel_size: 4
       moe_expert_parallel_size: 4
       enable_attention_dp: false
@@ -54,7 +54,7 @@ backend:
           - cuda_core
       kv_cache_config:
         enable_block_reuse: true
-        free_gpu_memory_fraction: 0.75
+        free_gpu_memory_fraction: 0.7
         dtype: fp8
         tokens_per_block: 32
       speculative_config:
