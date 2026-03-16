@@ -121,7 +121,7 @@ benchmark:
 frontend:
   type: dynamo
   args:
-    router-mode: round-robin
+    router-mode: kv
     router-reset-states: true
   enable_multiple_frontends: false
 health_check:

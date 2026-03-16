@@ -113,14 +113,14 @@ backend:
 benchmark:
   type: trace-replay
   trace_file: traces/together-ai-basic-no-delays_119k/dataset.jsonl
-  concurrencies: [8]
+  concurrencies: [6, 8, 10]
   ttft_threshold_ms: 3000
   itl_threshold_ms: 7
 
 frontend:
   type: dynamo
   args:
-    router-mode: round-robin
+    router-mode: kv
     router-reset-states: true
   enable_multiple_frontends: false
 health_check:
