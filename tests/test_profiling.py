@@ -388,3 +388,147 @@ class TestProfilingRunner:
         script = SCRIPTS_DIR / "profiling" / "profile.sh"
         assert script.exists()
 
+
+class TestProfilingTRTLLM:
+    """Tests for TRTLLM-specific profiling support."""
+
+    def _make_trtllm_backend(self):
+        from srtctl.backends.trtllm import TRTLLMProtocol
+
+        return TRTLLMProtocol()
+
+    def _make_process(self, mode="prefill"):
+        from srtctl.core.topology import Process
+
+        return Process(
+            node="node0",
+            gpu_indices=frozenset([0, 1, 2, 3]),
+            sys_port=8000,
+            http_port=8001,
+            endpoint_mode=mode,
+            endpoint_index=0,
+            node_rank=0,
+        )
+
+    def _make_runtime(self, tmp_path):
+        from unittest.mock import MagicMock
+        from pathlib import Path
+
+        runtime = MagicMock()
+        runtime.log_dir = tmp_path
+        model_path = MagicMock(spec=Path)
+        model_path.name = "llama"
+        runtime.model_path = model_path
+        runtime.speculative_model_path = None
+        return runtime
+
+    def test_trtllm_nsys_command_structure(self, tmp_path):
+        """nsys prefix is inserted between trtllm-llmapi-launch and python3."""
+        backend = self._make_trtllm_backend()
+        process = self._make_process("prefill")
+        runtime = self._make_runtime(tmp_path)
+
+        nsys_prefix = ["nsys", "profile", "-c", "cudaProfilerApi", "-o", "/logs/nsys/prefill"]
+
+        cmd = backend.build_worker_command(
+            process=process,
+            endpoint_processes=[process],
+            runtime=runtime,
+            nsys_prefix=nsys_prefix,
+        )
+
+        launcher_idx = cmd.index("trtllm-llmapi-launch")
+        python_idx = cmd.index("python3")
+        nsys_idx = cmd.index("nsys")
+
+        # nsys must appear after the launcher and before python3
+        assert launcher_idx < nsys_idx < python_idx
+        assert cmd[nsys_idx : nsys_idx + len(nsys_prefix)] == nsys_prefix
+
+    def test_trtllm_no_nsys_command_structure(self, tmp_path):
+        """Without nsys_prefix, command starts with trtllm-llmapi-launch then python3."""
+        backend = self._make_trtllm_backend()
+        process = self._make_process("prefill")
+        runtime = self._make_runtime(tmp_path)
+
+        cmd = backend.build_worker_command(
+            process=process,
+            endpoint_processes=[process],
+            runtime=runtime,
+            nsys_prefix=None,
+        )
+
+        assert cmd[0] == "trtllm-llmapi-launch"
+        assert cmd[1] == "python3"
+
+    def test_trtllm_nsys_env_vars(self):
+        """get_env_vars sets TLLM_PROFILE_START_STOP and TLLM_LLMAPI_ENABLE_NVTX for nsys."""
+        from srtctl.core.schema import ProfilingConfig, ProfilingPhaseConfig
+
+        profiling = ProfilingConfig(
+            type="nsys",
+            isl=1024,
+            osl=512,
+            concurrency=32,
+            prefill=ProfilingPhaseConfig(start_step=10, stop_step=20),
+            decode=ProfilingPhaseConfig(start_step=5, stop_step=15),
+        )
+
+        env = profiling.get_env_vars("prefill", "/logs/profiles")
+        assert env["TLLM_PROFILE_START_STOP"] == "10-20"
+        assert env["TLLM_LLMAPI_ENABLE_NVTX"] == "1"
+
+        env_decode = profiling.get_env_vars("decode", "/logs/profiles")
+        assert env_decode["TLLM_PROFILE_START_STOP"] == "5-15"
+        assert env_decode["TLLM_LLMAPI_ENABLE_NVTX"] == "1"
+
+    def test_trtllm_nsys_env_vars_not_set_without_steps(self):
+        """TLLM_PROFILE_START_STOP is not set when phase steps are absent."""
+        from srtctl.core.schema import ProfilingConfig
+
+        profiling = ProfilingConfig(
+            type="nsys",
+            isl=1024,
+            osl=512,
+            concurrency=32,
+        )
+
+        env = profiling.get_env_vars("prefill", "/logs/profiles")
+        assert "TLLM_PROFILE_START_STOP" not in env
+        assert "TLLM_LLMAPI_ENABLE_NVTX" not in env
+
+    def test_trtllm_torch_profiling_rejected(self):
+        """torch profiling raises ValidationError for trtllm backend."""
+        from marshmallow import ValidationError
+
+        from srtctl.core.schema import (
+            ModelConfig,
+            ProfilingConfig,
+            ProfilingPhaseConfig,
+            ResourceConfig,
+            SrtConfig,
+        )
+        from srtctl.backends.trtllm import TRTLLMProtocol
+
+        with pytest.raises(ValidationError, match="torch profiling is not supported for the trtllm backend"):
+            SrtConfig(
+                name="test",
+                model=ModelConfig(path="/model", container="/container", precision="fp8"),
+                resources=ResourceConfig(
+                    gpu_type="h100",
+                    prefill_nodes=1,
+                    decode_nodes=1,
+                    prefill_workers=1,
+                    decode_workers=1,
+                ),
+                backend=TRTLLMProtocol(),
+                profiling=ProfilingConfig(
+                    type="torch",
+                    isl=1024,
+                    osl=128,
+                    concurrency=1,
+                    prefill=ProfilingPhaseConfig(start_step=0, stop_step=50),
+                    decode=ProfilingPhaseConfig(start_step=0, stop_step=50),
+                ),
+            )
+

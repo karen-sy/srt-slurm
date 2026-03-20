@@ -6,7 +6,6 @@
 # Import runners to trigger registration
 from srtctl.benchmarks import (
     aiperf,
-    decode_only,
     gpqa,
     longbenchv2,
     mmlu,
@@ -39,6 +38,5 @@ __all__ = [
     "mooncake_router",
     "profiling",
     "aiperf",
-    "decode_only",
     "trace_replay",
 ]

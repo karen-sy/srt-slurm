@@ -653,6 +653,12 @@ class ProfilingConfig:
         if self.is_torch:
             env["SGLANG_TORCH_PROFILER_DIR"] = f"{profile_dir}/{mode}"
 
+        # TRTLLM nsys: set TLLM_PROFILE_START_STOP so PyExecutor triggers cudaProfilerStart/Stop
+        # (harmless on SGLang workers which ignore these env vars)
+        if self.is_nsys and phase_config and phase_config.start_step is not None and phase_config.stop_step is not None:
+            env["TLLM_PROFILE_START_STOP"] = f"{phase_config.start_step}-{phase_config.stop_step}"
+            env["TLLM_LLMAPI_ENABLE_NVTX"] = "1"
+
         return env
 
     def get_nsys_prefix(self, output_file: str) -> list[str]:
@@ -870,6 +876,11 @@ class SrtConfig:
         prof = self.profiling
         if not prof.enabled:
             return
+
+        if prof.is_torch and self.backend.type == "trtllm":
+            raise ValidationError(
+                "torch profiling is not supported for the trtllm backend; use nsys instead"
+            )
 
         # Traffic generator params are required when profiling is enabled
         if prof.isl is None or prof.osl is None or prof.concurrency is None:

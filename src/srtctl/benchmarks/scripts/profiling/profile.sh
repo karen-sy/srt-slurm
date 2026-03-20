@@ -130,19 +130,44 @@ done
 if [[ "${PROFILING_MODE}" == "prefill" ]]; then
     echo ""
     echo "Generating profiling traffic..."
-    python3 -m sglang.bench_serving \
-        --backend sglang \
-        --model "${model_name}" \
-        --host "${head_node}" --port "${head_port}" \
-        --dataset-name random \
-        --max-concurrency "${PROFILE_CONCURRENCY}" \
-        --num-prompts 128 \
-        --random-input-len "${PROFILE_ISL}" \
-        --random-output-len "${PROFILE_OSL}" \
-        --random-range-ratio 1 \
-        --warmup-request 0
 
-    # Run lm-eval for additional profiling coverage
+    if [[ "${PROFILING_BACKEND:-sglang}" == "trtllm" ]]; then
+        # TRTLLM: use aiperf (OpenAI-compatible), capture range is managed by
+        # TLLM_PROFILE_START_STOP on the worker side — no /start_profile call needed
+        aiperf profile \
+            --model "${model_name}" \
+            --tokenizer /model/ \
+            --tokenizer-trust-remote-code \
+            --endpoint-type chat \
+            --endpoint /v1/chat/completions \
+            --streaming \
+            --url "http://${head_node}:${head_port}" \
+            --synthetic-input-tokens-mean "${PROFILE_ISL}" \
+            --output-tokens-mean "${PROFILE_OSL}" \
+            --extra-inputs "max_tokens:${PROFILE_OSL}" \
+            --extra-inputs "min_tokens:${PROFILE_OSL}" \
+            --extra-inputs "ignore_eos:true" \
+            --concurrency "${PROFILE_CONCURRENCY}" \
+            --request-count 128 \
+            --warmup-request-count 0 \
+            --random-seed 42 \
+            -H 'Authorization: Bearer NOT USED'
+    else
+        # SGLang: use sglang.bench_serving
+        python3 -m sglang.bench_serving \
+            --backend sglang \
+            --model "${model_name}" \
+            --host "${head_node}" --port "${head_port}" \
+            --dataset-name random \
+            --max-concurrency "${PROFILE_CONCURRENCY}" \
+            --num-prompts 128 \
+            --random-input-len "${PROFILE_ISL}" \
+            --random-output-len "${PROFILE_OSL}" \
+            --random-range-ratio 1 \
+            --warmup-request 0
+    fi
+
+    # lm-eval for additional coverage (uses OpenAI /v1/completions — works for both backends)
     echo ""
     echo "Running lm-eval..."
     pip install lm-eval tenacity > /dev/null 2>&1
