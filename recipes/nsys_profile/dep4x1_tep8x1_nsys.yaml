@@ -12,10 +12,10 @@ resources:
   prefill_nodes: 1
   prefill_workers: 1
   gpus_per_prefill: 4
-  decode_nodes: 1
+  decode_nodes: 2
   decode_workers: 1
   gpus_per_decode: 8
-  gpus_per_node: 2
+  gpus_per_node: 4
 
 profiling:
   type: nsys
@@ -50,6 +50,7 @@ backend:
     TLLM_SPEC_DECODE_FORCE_NUM_ACCEPTED_TOKENS: "2"
   trtllm_config:
     prefill:
+      load_format: DUMMY
       max_batch_size: 2
       max_num_tokens: 16384
       enable_chunked_prefill: true
@@ -65,9 +66,7 @@ backend:
       cuda_graph_config: null
       disable_overlap_scheduler: true
       moe_config:
-        backend: CUTEDSL
-      nvfp4_gemm_config:
-        allowed_backends: [cutlass, cublaslt, cutedsl, cuda_core]
+        backend: TRTLLM
       kv_cache_config:
         enable_block_reuse: true
         free_gpu_memory_fraction: 0.6
@@ -75,6 +74,7 @@ backend:
         tokens_per_block: 32
 
     decode:
+      load_format: DUMMY
       allreduce_strategy: MNNVL
       cache_transceiver_config:
         backend: UCX
