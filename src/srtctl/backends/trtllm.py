@@ -209,9 +209,11 @@ class TRTLLMProtocol:
         container_config_path = Path("/logs") / config_filename
         container_model_path = Path("/model")
 
-        cmd = ["trtllm-llmapi-launch"]
         if nsys_prefix:
-            cmd.extend(nsys_prefix)
+            cmd = list(nsys_prefix)
+            cmd.append("trtllm-llmapi-launch")
+        else:
+            cmd = ["trtllm-llmapi-launch"]
         cmd.extend([
             "python3",
             "-m",

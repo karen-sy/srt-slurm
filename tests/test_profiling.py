@@ -423,7 +423,7 @@ class TestProfilingTRTLLM:
         return runtime
 
     def test_trtllm_nsys_command_structure(self, tmp_path):
-        """nsys prefix is inserted between trtllm-llmapi-launch and python3."""
+        """nsys prefix appears before trtllm-llmapi-launch (nsys is the foreground process)."""
         backend = self._make_trtllm_backend()
         process = self._make_process("prefill")
         runtime = self._make_runtime(tmp_path)
@@ -441,8 +441,8 @@ class TestProfilingTRTLLM:
         python_idx = cmd.index("python3")
         nsys_idx = cmd.index("nsys")
 
-        # nsys must appear after the launcher and before python3
-        assert launcher_idx < nsys_idx < python_idx
+        # nsys must appear before the launcher, launcher before python3
+        assert nsys_idx < launcher_idx < python_idx
         assert cmd[nsys_idx : nsys_idx + len(nsys_prefix)] == nsys_prefix
 
     def test_trtllm_no_nsys_command_structure(self, tmp_path):
