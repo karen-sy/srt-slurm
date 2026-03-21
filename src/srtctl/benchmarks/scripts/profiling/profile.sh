@@ -131,6 +131,8 @@ if [[ "${PROFILING_MODE}" == "prefill" ]]; then
     echo ""
     echo "Generating profiling traffic..."
 
+    mkdir -p /logs/artifacts/nsys_profile
+
     if [[ "${PROFILING_BACKEND:-sglang}" == "trtllm" ]]; then
         # TRTLLM: use aiperf (OpenAI-compatible), capture range is managed by
         # TLLM_PROFILE_START_STOP on the worker side — no /start_profile call needed
@@ -148,7 +150,9 @@ if [[ "${PROFILING_MODE}" == "prefill" ]]; then
             --extra-inputs "min_tokens:${PROFILE_OSL}" \
             --extra-inputs "ignore_eos:true" \
             --concurrency "${PROFILE_CONCURRENCY}" \
-            --request-count 128 \
+            --profile-export-level raw \
+            --artifact-dir /logs/artifacts/nsys_profile \
+            --request-count 20 \
             --random-seed 42 \
             -H 'Authorization: Bearer NOT USED'
     else
