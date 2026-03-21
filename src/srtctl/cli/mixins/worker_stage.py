@@ -95,7 +95,7 @@ class WorkerStageMixin:
         profiling = self.config.profiling
         nsys_prefix = None
         if profiling.is_nsys:
-            nsys_output = f"/logs/{process.node}_{mode}_w{index}_profile"
+            nsys_output = f"/logs/{process.node}_{mode}_w{index}_profile_rank%q{{SLURM_PROCID}}"
             nsys_prefix = profiling.get_nsys_prefix(nsys_output)
 
         # Build command using backend's method
@@ -208,7 +208,7 @@ class WorkerStageMixin:
         profiling = self.config.profiling
         nsys_prefix = None
         if profiling.is_nsys:
-            nsys_output = f"/logs/{leader.node}_{mode}_w{index}_profile"
+            nsys_output = f"/logs/{leader.node}_{mode}_w{index}_profile_rank%q{{SLURM_PROCID}}"
             nsys_prefix = profiling.get_nsys_prefix(nsys_output)
 
         # Build command using backend's method
