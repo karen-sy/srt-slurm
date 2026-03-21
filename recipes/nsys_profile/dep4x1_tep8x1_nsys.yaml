@@ -21,7 +21,7 @@ profiling:
   type: nsys
   isl: 8000
   osl: 1000
-  concurrency: 32
+  concurrency: 4
   prefill:
     start_step: 5
     stop_step: 15
