@@ -2,7 +2,7 @@ name: dep4x1_tep8x1_nsys
 
 model:
   path: kimi-k25-nvfp4
-  container: kimi-bench-trtllm
+  container: kimi-bench-trtllm-nocutedsl
   precision: fp4
   speculative_model: kimi-eagle
 
@@ -19,8 +19,8 @@ resources:
 
 profiling:
   type: nsys
-  isl: 120000
-  osl: 800
+  isl: 8000
+  osl: 1000
   concurrency: 32
   prefill:
     start_step: 5
@@ -50,11 +50,14 @@ backend:
     TLLM_SPEC_DECODE_FORCE_NUM_ACCEPTED_TOKENS: "2"
   trtllm_config:
     prefill:
+      cache_transceiver_config:
+        backend: UCX
+        max_tokens_in_buffer: 8192
       load_format: DUMMY
       max_batch_size: 2
-      max_num_tokens: 16384
+      max_num_tokens: 4096
       enable_chunked_prefill: true
-      max_seq_len: 167000
+      max_seq_len: 10000
       tensor_parallel_size: 4
       moe_expert_parallel_size: 4
       enable_attention_dp: true
@@ -78,7 +81,7 @@ backend:
       allreduce_strategy: MNNVL
       cache_transceiver_config:
         backend: UCX
-        max_tokens_in_buffer: 167936
+        max_tokens_in_buffer: 8192
       max_num_tokens: 4
       disable_overlap_scheduler: false
       enable_lm_head_tp_in_adp: false
@@ -92,7 +95,7 @@ backend:
         enable_block_reuse: true   
         free_gpu_memory_fraction: 0.75
       max_batch_size: 1
-      max_seq_len: 167000
+      max_seq_len: 10000
       moe_config:
         backend: TRTLLM
         use_low_precision_moe_combine: true

@@ -149,7 +149,6 @@ if [[ "${PROFILING_MODE}" == "prefill" ]]; then
             --extra-inputs "ignore_eos:true" \
             --concurrency "${PROFILE_CONCURRENCY}" \
             --request-count 128 \
-            --warmup-request-count 0 \
             --random-seed 42 \
             -H 'Authorization: Bearer NOT USED'
     else
