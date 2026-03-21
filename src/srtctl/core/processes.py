@@ -39,6 +39,7 @@ class ManagedProcess:
     log_file: Path | None = None
     node: str | None = None
     critical: bool = True
+    cleanup_last: bool = False  # If True, terminated after other processes during cleanup
 
     @property
     def is_running(self) -> bool:
@@ -146,11 +147,25 @@ class ProcessRegistry:
 
             return len(self._failed_processes) > 0
 
-    def cleanup(self) -> None:
-        """Terminate all registered processes."""
+    def cleanup(self, worker_timeout: float = 10.0) -> None:
+        """Terminate all registered processes.
+
+        Processes with cleanup_last=False are terminated first (with worker_timeout),
+        then cleanup_last=True processes (e.g. infra). This ensures workers shut down
+        gracefully before infra services are torn down.
+        """
         with self._lock:
             logger.info("Cleaning up %d processes...", len(self._processes))
-            for name, proc in self._processes.items():
+            first = [(n, p) for n, p in self._processes.items() if not p.cleanup_last]
+            last = [(n, p) for n, p in self._processes.items() if p.cleanup_last]
+            for name, proc in first:
+                if proc.is_running:
+                    logger.debug("Terminating process: %s", name)
+                    try:
+                        proc.terminate(timeout=worker_timeout)
+                    except Exception as e:
+                        logger.warning("Failed to terminate %s: %s", name, e)
+            for name, proc in last:
                 if proc.is_running:
                     logger.debug("Terminating process: %s", name)
                     try:

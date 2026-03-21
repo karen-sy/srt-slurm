@@ -125,6 +125,7 @@ class SweepOrchestrator(WorkerStageMixin, FrontendStageMixin, BenchmarkStageMixi
             log_file=infra_log,
             node=infra_node,
             critical=True,
+            cleanup_last=True,
         )
 
         logger.info("Waiting for NATS (port 4222) on %s...", infra_node)
@@ -235,7 +236,8 @@ class SweepOrchestrator(WorkerStageMixin, FrontendStageMixin, BenchmarkStageMixi
             logger.info("Cleanup")
             reporter.report_completed(exit_code)
             stop_event.set()
-            registry.cleanup()
+            worker_timeout = 120.0 if self.config.profiling.is_nsys else 10.0
+            registry.cleanup(worker_timeout=worker_timeout)
             if exit_code != 0:
                 registry.print_failure_details()
             # Run post-processing (AI analysis if enabled)
