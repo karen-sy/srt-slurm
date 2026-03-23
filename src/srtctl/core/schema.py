@@ -679,6 +679,7 @@ class ProfilingConfig:
             "-t",
             "cuda,nvtx",
             "--cuda-graph-trace=node",
+            "--trace-fork-before-exec=true",
             "-c",
             "cudaProfilerApi",
             "--capture-range-end",
