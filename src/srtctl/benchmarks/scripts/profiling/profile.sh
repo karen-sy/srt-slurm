@@ -11,6 +11,8 @@
 model_name="${PROFILE_MODEL_NAME:-deepseek-ai/DeepSeek-R1}"
 head_node="${HEAD_NODE:-127.0.0.1}"
 head_port="${HEAD_PORT:-8000}"
+export AIPERF_RECORD_EXPORT_BATCH_SIZE=1  # Flush profile_export.jsonl after every x requests
+
 
 # Parse arguments
 n_prefill=$1

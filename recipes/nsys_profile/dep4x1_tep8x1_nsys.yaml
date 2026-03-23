@@ -41,6 +41,7 @@ backend:
     OTEL_EXPORT_ENABLED: "1"
     OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://10.57.209.4:4317"
     OTEL_SERVICE_NAME: "dynamo-prefill"
+    DYN_LOGGING_JSONL: "1"
   decode_environment:
     TLLM_LOG_LEVEL: INFO
     TRTLLM_SERVER_DISABLE_GC: "1"
@@ -54,6 +55,7 @@ backend:
     OTEL_EXPORT_ENABLED: "1"
     OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://10.57.209.4:4317"
     OTEL_SERVICE_NAME: "dynamo-decode"
+    DYN_LOGGING_JSONL: "1"
   trtllm_config:
     prefill:
       otlp_traces_endpoint: "http://10.57.209.4:4317"
@@ -126,6 +128,7 @@ frontend:
     router-reset-states: true
   enable_multiple_frontends: false
   env:
+    DYN_LOGGING_JSONL: "1"
     OTEL_EXPORT_ENABLED: "1"
     OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://10.57.209.4:4317"
     OTEL_SERVICE_NAME: "dynamo-frontend"
