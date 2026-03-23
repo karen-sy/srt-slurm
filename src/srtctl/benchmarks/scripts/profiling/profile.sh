@@ -155,16 +155,7 @@ if [[ "${PROFILING_MODE}" == "prefill" ]]; then
             --request-count 30 \
             --random-seed 42 \
             -H 'Authorization: Bearer NOT USED'
-            
-        # lm-eval for additional coverage (uses OpenAI /v1/completions — works for both backends)
-        echo ""
-        echo "Running lm-eval..."
-        pip install lm-eval tenacity > /dev/null 2>&1
-        python -m lm_eval \
-            --model local-completions \
-            --tasks gsm8k \
-            --model_args "base_url=http://${head_node}:${head_port}/v1/completions,model=${model_name},tokenized_requests=False,tokenizer_backend=None,num_concurrent=${PROFILE_CONCURRENCY},timeout=6000,max_retries=1" \
-            --limit 10
+
     else
         # SGLang: use sglang.bench_serving
         python3 -m sglang.bench_serving \
@@ -178,6 +169,17 @@ if [[ "${PROFILING_MODE}" == "prefill" ]]; then
             --random-output-len "${PROFILE_OSL}" \
             --random-range-ratio 1 \
             --warmup-request 0
+
+            
+        # lm-eval for additional coverage (uses OpenAI /v1/completions — works for both backends)
+        echo ""
+        echo "Running lm-eval..."
+        pip install lm-eval tenacity > /dev/null 2>&1
+        python -m lm_eval \
+            --model local-completions \
+            --tasks gsm8k \
+            --model_args "base_url=http://${head_node}:${head_port}/v1/completions,model=${model_name},tokenized_requests=False,tokenizer_backend=None,num_concurrent=${PROFILE_CONCURRENCY},timeout=6000,max_retries=1" \
+            --limit 10
     fi
 fi
 
