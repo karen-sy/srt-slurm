@@ -581,10 +581,11 @@ class ProfilingConfig:
     prefill/decode/aggregated sections.
     """
 
-    type: str = "none"  # "none", "nsys", or "torch"
+    type: str = "none"  # "none", "nsys", "nsys-trace", or "torch"
     isl: int | None = None  # Input sequence length for profiling workload
     osl: int | None = None  # Output sequence length for profiling workload
     concurrency: int | None = None  # Batch size / concurrency
+    trace_file: str | None = None  # Trace file path for nsys-trace mode (JSONL)
 
     # Phase-specific profiling step configs
     prefill: ProfilingPhaseConfig | None = None
@@ -598,8 +599,13 @@ class ProfilingConfig:
 
     @property
     def is_nsys(self) -> bool:
-        """Check if using NVIDIA Nsight Systems profiling."""
-        return self.type == "nsys"
+        """Check if using NVIDIA Nsight Systems profiling (includes nsys-trace mode)."""
+        return self.type in ("nsys", "nsys-trace")
+
+    @property
+    def is_nsys_trace(self) -> bool:
+        """Check if using nsys profiling with trace-replay traffic generation."""
+        return self.type == "nsys-trace"
 
     @property
     def is_torch(self) -> bool:
@@ -886,12 +892,19 @@ class SrtConfig:
                 "torch profiling is not supported for the trtllm backend; use nsys instead"
             )
 
-        # Traffic generator params are required when profiling is enabled
-        if prof.isl is None or prof.osl is None or prof.concurrency is None:
-            raise ValidationError(
-                "profiling.isl/osl/concurrency must be set when profiling is enabled. "
-                f"Got isl={prof.isl}, osl={prof.osl}, concurrency={prof.concurrency}"
-            )
+        # Traffic generator params validation
+        if prof.is_nsys_trace:
+            # nsys-trace uses a trace file instead of synthetic isl/osl
+            if prof.trace_file is None:
+                raise ValidationError("profiling.trace_file must be set when profiling.type is 'nsys-trace'")
+            if prof.concurrency is None:
+                raise ValidationError("profiling.concurrency must be set when profiling is enabled")
+        else:
+            if prof.isl is None or prof.osl is None or prof.concurrency is None:
+                raise ValidationError(
+                    "profiling.isl/osl/concurrency must be set when profiling is enabled. "
+                    f"Got isl={prof.isl}, osl={prof.osl}, concurrency={prof.concurrency}"
+                )
 
         r = self.resources
         is_disaggregated = r.is_disaggregated

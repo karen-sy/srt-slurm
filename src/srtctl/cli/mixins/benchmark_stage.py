@@ -209,12 +209,20 @@ class BenchmarkStageMixin:
             p = self.config.profiling
 
             # Traffic generator params
-            if p.isl is not None:
-                env["PROFILE_ISL"] = str(p.isl)
-            if p.osl is not None:
-                env["PROFILE_OSL"] = str(p.osl)
             if p.concurrency is not None:
                 env["PROFILE_CONCURRENCY"] = str(p.concurrency)
+            if p.is_nsys_trace:
+                # nsys-trace: resolve trace file to container path
+                from srtctl.benchmarks.profiling import ProfilingRunner
+
+                trace_path = ProfilingRunner()._resolve_trace_path(p.trace_file)
+                container_trace_path = ProfilingRunner.TRACE_MOUNT_PATH / trace_path.name
+                env["PROFILE_TRACE_FILE"] = str(container_trace_path)
+            else:
+                if p.isl is not None:
+                    env["PROFILE_ISL"] = str(p.isl)
+                if p.osl is not None:
+                    env["PROFILE_OSL"] = str(p.osl)
 
             # Model name
             env["PROFILE_MODEL_NAME"] = self.config.served_model_name

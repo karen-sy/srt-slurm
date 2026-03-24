@@ -117,8 +117,7 @@ for concurrency in "${CONCURRENCY_LIST[@]}"; do
         --custom-dataset-type mooncake_trace \
         --prompt-corpus coding \
         --concurrency "${concurrency}" \
-        --concurrency-ramp-duration $((5 * concurrency)) \
-        --benchmark-duration 600 \
+        --benchmark-duration 300 \
         --benchmark-grace-period 60 \
         --workers-max 200 \
         --request-timeout-seconds 1200 \
