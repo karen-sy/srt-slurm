@@ -581,11 +581,14 @@ class ProfilingConfig:
     prefill/decode/aggregated sections.
     """
 
-    type: str = "none"  # "none", "nsys", "nsys-trace", or "torch"
+    type: str = "none"  # "none", "nsys", "nsys-trace", "nsys-time", or "torch"
     isl: int | None = None  # Input sequence length for profiling workload
     osl: int | None = None  # Output sequence length for profiling workload
     concurrency: int | None = None  # Batch size / concurrency
     trace_file: str | None = None  # Trace file path for nsys-trace mode (JSONL)
+    delay_secs: int | None = None  # Seconds from worker launch before capture starts (nsys-time mode)
+    duration_secs: int | None = None  # Seconds to capture after delay (nsys-time mode)
+    benchmark_duration_secs: int = 300  # How long to generate traffic (nsys-time mode)
 
     # Phase-specific profiling step configs
     prefill: ProfilingPhaseConfig | None = None
@@ -599,13 +602,18 @@ class ProfilingConfig:
 
     @property
     def is_nsys(self) -> bool:
-        """Check if using NVIDIA Nsight Systems profiling (includes nsys-trace mode)."""
-        return self.type in ("nsys", "nsys-trace")
+        """Check if using NVIDIA Nsight Systems profiling (includes nsys-trace and nsys-time modes)."""
+        return self.type in ("nsys", "nsys-trace", "nsys-time")
 
     @property
     def is_nsys_trace(self) -> bool:
         """Check if using nsys profiling with trace-replay traffic generation."""
         return self.type == "nsys-trace"
+
+    @property
+    def is_nsys_time(self) -> bool:
+        """Check if using nsys profiling with time-range capture (start_step + duration_secs)."""
+        return self.type == "nsys-time"
 
     @property
     def is_torch(self) -> bool:
@@ -659,19 +667,24 @@ class ProfilingConfig:
         if self.is_torch:
             env["SGLANG_TORCH_PROFILER_DIR"] = f"{profile_dir}/{mode}"
 
-        # TRTLLM nsys: set TLLM_PROFILE_START_STOP so PyExecutor triggers cudaProfilerStart/Stop
-        # (harmless on SGLang workers which ignore these env vars)
-        if self.is_nsys and phase_config and phase_config.start_step is not None and phase_config.stop_step is not None:
+        if self.is_nsys_time:
+            # nsys-time: timing is controlled entirely by nsys --delay/--duration on the worker process;
+            # no iteration-based trigger needed
+            env["PROFILE_BENCHMARK_DURATION_SECS"] = str(self.benchmark_duration_secs)
+        elif self.is_nsys and phase_config and phase_config.start_step is not None and phase_config.stop_step is not None:
+            # TRTLLM nsys: set TLLM_PROFILE_START_STOP so PyExecutor triggers cudaProfilerStart/Stop
+            # (harmless on SGLang workers which ignore these env vars)
             env["TLLM_PROFILE_START_STOP"] = f"{phase_config.start_step}-{phase_config.stop_step}"
             env["TLLM_LLMAPI_ENABLE_NVTX"] = "1"
 
         return env
 
-    def get_nsys_prefix(self, output_file: str) -> list[str]:
+    def get_nsys_prefix(self, output_file: str, mode: str | None = None) -> list[str]:
         """Get nsys profiling command prefix.
 
         Args:
             output_file: Path for nsys output file (without extension)
+            mode: Worker mode (prefill/decode/agg); needed for nsys-time duration lookup
 
         Returns:
             Command prefix list for nsys profiling
@@ -679,25 +692,36 @@ class ProfilingConfig:
         if not self.is_nsys:
             return []
 
-        return [
-            "nsys",
-            "profile",
-            "-t",
-            "cuda,nvtx",
-            "--cuda-graph-trace=node",
-            "-c",
-            "cudaProfilerApi",
-            "--capture-range-end",
-            "stop",
-            "--kill",
-            "none",
-            "--wait",
-            "all",
-            "--force-overwrite",
-            "true",
-            "-o",
-            output_file,
+        if self.is_nsys_time:
+            # Time-based capture: no cudaProfilerApi trigger.
+            # nsys --delay/--duration fires at the same wall-clock offset on every worker,
+            # giving aligned P and D profiles regardless of iteration speed.
+            cmd = [
+                "nsys", "profile",
+                "-t", "cuda,nvtx",
+                "--cuda-graph-trace=node",
+            ]
+            if self.delay_secs is not None:
+                cmd += ["--delay", str(self.delay_secs)]
+            if self.duration_secs is not None:
+                cmd += ["--duration", str(self.duration_secs)]
+        else:
+            # Iteration-based capture: triggered by cudaProfilerStart/Stop — unchanged.
+            cmd = [
+                "nsys", "profile",
+                "-t", "cuda,nvtx",
+                "--cuda-graph-trace=node",
+                "-c", "cudaProfilerApi",
+                "--capture-range-end", "stop",
+            ]
+
+        cmd += [
+            "--kill", "none",
+            "--wait", "all",
+            "--force-overwrite", "true",
+            "-o", output_file,
         ]
+        return cmd
 
     Schema: ClassVar[builtins.type[Schema]] = Schema
 
@@ -899,6 +923,13 @@ class SrtConfig:
                 raise ValidationError("profiling.trace_file must be set when profiling.type is 'nsys-trace'")
             if prof.concurrency is None:
                 raise ValidationError("profiling.concurrency must be set when profiling is enabled")
+        elif prof.is_nsys_time:
+            # nsys-time uses synthetic isl/osl like nsys, but phase configs require duration_secs not stop_step
+            if prof.isl is None or prof.osl is None or prof.concurrency is None:
+                raise ValidationError(
+                    "profiling.isl/osl/concurrency must be set when profiling.type is 'nsys-time'. "
+                    f"Got isl={prof.isl}, osl={prof.osl}, concurrency={prof.concurrency}"
+                )
         else:
             if prof.isl is None or prof.osl is None or prof.concurrency is None:
                 raise ValidationError(
@@ -912,26 +943,34 @@ class SrtConfig:
         has_decode_prof = prof.decode is not None
         has_agg_prof = prof.aggregated is not None
 
-        # Validate phase configs match serving mode
-        if is_disaggregated:
-            if has_agg_prof:
-                raise ValidationError(
-                    "Disaggregated mode only supports profiling.prefill/decode; profiling.aggregated is not allowed."
-                )
-            if not has_prefill_prof or not has_decode_prof:
-                raise ValidationError(
-                    "Disaggregated mode requires both profiling.prefill and profiling.decode "
-                    "to be set when profiling is enabled."
-                )
-        else:
-            if has_prefill_prof or has_decode_prof:
-                raise ValidationError(
-                    "Aggregated mode only supports profiling.aggregated; profiling.prefill/decode are not allowed."
-                )
-            if not has_agg_prof:
-                raise ValidationError(
-                    "Aggregated mode requires profiling.aggregated to be set when profiling is enabled."
-                )
+        # nsys-time uses top-level delay/duration — per-phase step configs are not used
+        if not prof.is_nsys_time:
+            # Validate phase configs match serving mode
+            if is_disaggregated:
+                if has_agg_prof:
+                    raise ValidationError(
+                        "Disaggregated mode only supports profiling.prefill/decode; profiling.aggregated is not allowed."
+                    )
+                if not has_prefill_prof or not has_decode_prof:
+                    raise ValidationError(
+                        "Disaggregated mode requires both profiling.prefill and profiling.decode "
+                        "to be set when profiling is enabled."
+                    )
+            else:
+                if has_prefill_prof or has_decode_prof:
+                    raise ValidationError(
+                        "Aggregated mode only supports profiling.aggregated; profiling.prefill/decode are not allowed."
+                    )
+                if not has_agg_prof:
+                    raise ValidationError(
+                        "Aggregated mode requires profiling.aggregated to be set when profiling is enabled."
+                    )
+
+        # nsys-time: timing is top-level (delay_secs + duration_secs), no per-phase steps needed
+        if prof.is_nsys_time and (prof.delay_secs is None or prof.duration_secs is None):
+            raise ValidationError(
+                "profiling.delay_secs and profiling.duration_secs are required for nsys-time mode"
+            )
 
         # Profiling requires single worker per role
         if is_disaggregated:

@@ -22,18 +22,26 @@ class ProfilingRunner(BenchmarkRunner):
     Sends /start_profile API calls to workers and generates traffic
     to produce profiling data.
 
-    This benchmark is auto-selected when profiling.type is "torch", "nsys", or "nsys-trace".
+    This benchmark is auto-selected when profiling.type is "torch", "nsys", "nsys-trace",
+    or "nsys-time".
 
     Required config fields (in profiling section):
         - profiling.concurrency: Batch size for profiling
-        - profiling.prefill/decode/aggregated: Phase-specific step configs
 
-    For nsys/torch modes (synthetic traffic):
+    For nsys/torch modes (synthetic traffic, iteration-based capture):
         - profiling.isl: Input sequence length
         - profiling.osl: Output sequence length
+        - profiling.prefill/decode/aggregated: Phase-specific start_step/stop_step
 
     For nsys-trace mode (trace-replay traffic):
         - profiling.trace_file: Path to trace file (JSONL format)
+
+    For nsys-time mode (synthetic traffic, time-based capture):
+        - profiling.isl: Input sequence length
+        - profiling.osl: Output sequence length
+        - profiling.delay_secs: Seconds from worker launch before nsys starts capturing
+        - profiling.duration_secs: Seconds to capture (same window on all workers)
+        - profiling.benchmark_duration_secs: Total traffic duration (default 300s)
     """
 
     # Container mount point for trace files (nsys-trace mode)
@@ -54,6 +62,8 @@ class ProfilingRunner(BenchmarkRunner):
     def _get_script_path(self, config: SrtConfig) -> str:
         if config.profiling.is_nsys_trace:
             return "/srtctl-benchmarks/profiling/profile-trace.sh"
+        if config.profiling.is_nsys_time:
+            return "/srtctl-benchmarks/profiling/profile-time.sh"
         return "/srtctl-benchmarks/profiling/profile.sh"
 
     def _resolve_trace_path(self, trace_file: str) -> Path:

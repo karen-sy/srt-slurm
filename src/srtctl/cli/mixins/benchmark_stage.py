@@ -252,7 +252,7 @@ class BenchmarkStageMixin:
             if agg_ips:
                 env["PROFILE_AGG_IPS"] = ",".join(agg_ips)
 
-            # Phase-specific step configs
+            # Phase-specific step configs (nsys iteration-based mode)
             if p.prefill:
                 if p.prefill.start_step is not None:
                     env["PROFILE_PREFILL_START_STEP"] = str(p.prefill.start_step)
@@ -268,6 +268,9 @@ class BenchmarkStageMixin:
                     env["PROFILE_AGG_START_STEP"] = str(p.aggregated.start_step)
                 if p.aggregated.stop_step is not None:
                     env["PROFILE_AGG_STOP_STEP"] = str(p.aggregated.stop_step)
+            # nsys-time: benchmark duration for traffic generation
+            if p.is_nsys_time:
+                env["PROFILE_BENCHMARK_DURATION_SECS"] = str(p.benchmark_duration_secs)
 
             # Torch profiler directory
             if p.is_torch:
