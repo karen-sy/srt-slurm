@@ -1,0 +1,141 @@
+name: dep4x1_tep8x1_nsys
+
+model:
+  path: kimi-k25-nvfp4
+  container: kimi-bench-trtllm-nocutedsl
+  precision: fp4
+
+# Profiling requires exactly 1 prefill + 1 decode worker
+resources:
+  gpu_type: gb200
+  prefill_nodes: 1
+  prefill_workers: 1
+  gpus_per_prefill: 4
+  decode_nodes: 2
+  decode_workers: 1
+  gpus_per_decode: 8
+  gpus_per_node: 4
+
+profiling:
+  type: nsys
+  isl: 8000
+  osl: 300
+  concurrency: 4
+  prefill:
+    start_step: 10
+    stop_step: 50
+  decode:
+    start_step: 1000
+    stop_step: 1100
+
+
+backend:
+  type: trtllm
+  prefill_environment:
+    TRTLLM_SERVER_DISABLE_GC: "1"
+    TRTLLM_WORKER_DISABLE_GC: "1"
+    NCCL_GRAPH_MIXING_SUPPORT: "0"
+    # TRTLLM_ENABLE_PDL: "1"
+    TLLM_SPEC_DECODE_FORCE_NUM_ACCEPTED_TOKENS: "2"
+    OTEL_EXPORT_ENABLED: "1"
+    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://10.57.209.4:4317"
+    OTEL_SERVICE_NAME: "dynamo-prefill"
+    DYN_LOGGING_JSONL: "1"
+  decode_environment:
+    TLLM_LOG_LEVEL: INFO
+    TRTLLM_SERVER_DISABLE_GC: "1"
+    TRTLLM_WORKER_DISABLE_GC: "1"
+    # TRTLLM_ENABLE_PDL: "1"
+    NCCL_GRAPH_MIXING_SUPPORT: "0"
+    TRTLLM_FORCE_COMM_METHOD: NVLINK_TWO_SIDED
+    ENABLE_CONFIGURABLE_MOE: "1"
+    TLLM_OVERRIDE_LAYER_NUM: "61"
+    TLLM_SPEC_DECODE_FORCE_NUM_ACCEPTED_TOKENS: "2"
+    OTEL_EXPORT_ENABLED: "1"
+    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://10.57.209.4:4317"
+    OTEL_SERVICE_NAME: "dynamo-decode"
+    DYN_LOGGING_JSONL: "1"
+  trtllm_config:
+    prefill:
+      # otlp_traces_endpoint: "http://10.57.209.4:4317"
+      cache_transceiver_config:
+        backend: UCX
+        max_tokens_in_buffer: 8192
+      max_batch_size: 2
+      max_num_tokens: 4096
+      enable_chunked_prefill: true
+      max_seq_len: 10000
+      tensor_parallel_size: 4
+      moe_expert_parallel_size: 4
+      enable_attention_dp: true
+      pipeline_parallel_size: 1
+      num_postprocess_workers: 4
+      print_iter_log: true
+      stream_interval: 1
+      trust_remote_code: true
+      cuda_graph_config: null
+      disable_overlap_scheduler: true
+      moe_config:
+        backend: TRTLLM
+      kv_cache_config:
+        enable_block_reuse: false
+        free_gpu_memory_fraction: 0.6
+        dtype: fp8
+        tokens_per_block: 32
+
+    decode:
+      # otlp_traces_endpoint: "http://10.57.209.4:4317"
+      allreduce_strategy: MNNVL
+      cache_transceiver_config:
+        backend: UCX
+        max_tokens_in_buffer: 8192
+      max_num_tokens: 4
+      disable_overlap_scheduler: false
+      enable_lm_head_tp_in_adp: false
+      cuda_graph_config:
+        batch_sizes:
+        - 1
+        enable_padding: true
+      enable_attention_dp: false
+      kv_cache_config:
+        dtype: fp8
+        enable_block_reuse: false   
+        free_gpu_memory_fraction: 0.75
+      max_batch_size: 1
+      max_seq_len: 10000
+      moe_config:
+        backend: TRTLLM
+        use_low_precision_moe_combine: true
+      nvfp4_gemm_config:
+        allowed_backends:
+          - cutlass
+          - cublaslt
+          - cutedsl
+          - cuda_core
+      moe_expert_parallel_size: 8
+      num_postprocess_workers: 4
+      print_iter_log: true
+      stream_interval: 100
+      tensor_parallel_size: 8
+      trust_remote_code: true
+frontend:
+  type: dynamo
+  args:
+    router-mode: kv
+    router-reset-states: true
+  enable_multiple_frontends: false
+  env:
+    DYN_LOGGING_JSONL: "1"
+    OTEL_EXPORT_ENABLED: "1"
+    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://10.57.209.4:4317"
+    OTEL_SERVICE_NAME: "dynamo-frontend"
+
+health_check:
+  max_attempts: 500
+  interval_seconds: 10
+
+dynamo:
+  install: false
+
+infra:
+  etcd_nats_dedicated_node: true

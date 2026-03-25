@@ -10,7 +10,7 @@ resources:
   prefill_nodes: 1
   prefill_workers: 1
   gpus_per_prefill: 4
-  decode_nodes: 1
+  decode_nodes: 2
   decode_workers: 1  # currently profiling mode only supports 1 worker
   gpus_per_decode: 8
   gpus_per_node: 4
@@ -20,7 +20,7 @@ backend:
     TLLM_LOG_LEVEL: INFO
     TRTLLM_SERVER_DISABLE_GC: '1'
     TRTLLM_WORKER_DISABLE_GC: '1'
-    TRTLLM_ENABLE_PDL: '1'
+    # TRTLLM_ENABLE_PDL: '1'
     NCCL_GRAPH_MIXING_SUPPORT: '0'
     TLLM_OVERRIDE_LAYER_NUM: '61'
   decode_environment:
@@ -108,11 +108,7 @@ backend:
         enable_piecewise_cuda_graph: true
         enable_userbuffers: false
         max_num_streams: 2
-      speculative_config:
-        decoding_type: Eagle
-        max_draft_len: 3
-        allow_advanced_sampling: true
-
+        
     decode:
       allreduce_strategy: MNNVL
       cache_transceiver_config:

@@ -154,7 +154,7 @@ if [[ "${PROFILING_MODE}" == "prefill" ]]; then
             --concurrency "${PROFILE_CONCURRENCY}" \
             --profile-export-level raw \
             --artifact-dir /logs/artifacts/nsys_profile \
-            --request-count 30 \
+            --request-count 50 \
             --random-seed 42 \
             -H 'Authorization: Bearer NOT USED'
 
