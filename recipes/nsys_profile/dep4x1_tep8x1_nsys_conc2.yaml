@@ -60,9 +60,9 @@ backend:
       # otlp_traces_endpoint: "http://10.57.209.4:4317"
       cache_transceiver_config:
         backend: UCX
-        max_tokens_in_buffer: 8192
+        max_tokens_in_buffer: 16384
       max_batch_size: 2
-      max_num_tokens: 4096
+      max_num_tokens: 16384
       enable_chunked_prefill: true
       max_seq_len: 10000
       tensor_parallel_size: 4
@@ -88,7 +88,7 @@ backend:
       allreduce_strategy: MNNVL
       cache_transceiver_config:
         backend: UCX
-        max_tokens_in_buffer: 8192
+        max_tokens_in_buffer: 16384
       max_num_tokens: 4
       disable_overlap_scheduler: false
       enable_lm_head_tp_in_adp: false
@@ -121,7 +121,7 @@ backend:
 frontend:
   type: dynamo
   args:
-    router-mode: kv
+    router-mode: round-robin
     router-reset-states: true
   enable_multiple_frontends: false
   env:
