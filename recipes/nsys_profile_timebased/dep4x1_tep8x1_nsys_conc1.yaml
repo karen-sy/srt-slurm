@@ -21,7 +21,7 @@ profiling:
   isl: 8000
   osl: 300
   concurrency: 1
-  delay_secs: 600       # 10 minutes from worker launch (covers weight loading + autotuner)
+  delay_secs: 400       # 6.5 minutes from worker launch (covers weight loading + autotuner)
   duration_secs: 40     # capture window — same on all workers for aligned P/D profiles
   benchmark_duration_secs: 720
 
@@ -57,9 +57,9 @@ backend:
       # otlp_traces_endpoint: "http://10.57.209.4:4317"
       cache_transceiver_config:
         backend: UCX
-        max_tokens_in_buffer: 16384
+        max_tokens_in_buffer: 8192
       max_batch_size: 2
-      max_num_tokens: 16384
+      max_num_tokens: 8192
       enable_chunked_prefill: true
       max_seq_len: 10000
       tensor_parallel_size: 4
@@ -79,13 +79,12 @@ backend:
         free_gpu_memory_fraction: 0.6
         dtype: fp8
         tokens_per_block: 32
-
     decode:
       # otlp_traces_endpoint: "http://10.57.209.4:4317"
       allreduce_strategy: MNNVL
       cache_transceiver_config:
         backend: UCX
-        max_tokens_in_buffer: 16384
+        max_tokens_in_buffer: 8192
       max_num_tokens: 4
       disable_overlap_scheduler: false
       enable_lm_head_tp_in_adp: false
