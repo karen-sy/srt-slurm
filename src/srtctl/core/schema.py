@@ -698,7 +698,8 @@ class ProfilingConfig:
             # giving aligned P and D profiles regardless of iteration speed.
             cmd = [
                 "nsys", "profile",
-                "-t", "cuda,nvtx",
+                "-t", "cuda,nvtx,ucx",
+                "--sample=none",
                 "--cuda-graph-trace=node",
             ]
             if self.delay_secs is not None:
@@ -709,7 +710,8 @@ class ProfilingConfig:
             # Iteration-based capture: triggered by cudaProfilerStart/Stop — unchanged.
             cmd = [
                 "nsys", "profile",
-                "-t", "cuda,nvtx",
+                "-t", "cuda,nvtx,ucx",
+                "--sample=none",
                 "--cuda-graph-trace=node",
                 "-c", "cudaProfilerApi",
                 "--capture-range-end", "stop",

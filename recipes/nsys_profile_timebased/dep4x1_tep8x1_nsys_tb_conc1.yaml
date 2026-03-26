@@ -20,10 +20,10 @@ profiling:
   type: nsys-time
   isl: 8000
   osl: 300
-  concurrency: 2
-  delay_secs: 600       # 10 minutes from worker launch (covers weight loading + autotuner)
-  duration_secs: 40     # capture window — same on all workers for aligned P/D profiles
-  benchmark_duration_secs: 720
+  concurrency: 1
+  delay_secs: 400       # 6.5 minutes from worker launch (covers weight loading + autotuner)
+  duration_secs: 30     # capture window — same on all workers for aligned P/D profiles
+  benchmark_duration_secs: 500
 
 
 backend:
@@ -91,14 +91,13 @@ backend:
       cuda_graph_config:
         batch_sizes:
         - 1
-        - 2
         enable_padding: true
       enable_attention_dp: false
       kv_cache_config:
         dtype: fp8
         enable_block_reuse: false
         free_gpu_memory_fraction: 0.75
-      max_batch_size: 2
+      max_batch_size: 1
       max_seq_len: 10000
       moe_config:
         backend: TRTLLM
