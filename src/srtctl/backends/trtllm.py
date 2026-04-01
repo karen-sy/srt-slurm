@@ -174,8 +174,8 @@ class TRTLLMProtocol:
         container_config_path = Path("/logs") / config_filename
         container_model_path = Path("/model")
 
-        cmd = [
-            "trtllm-llmapi-launch",
+        cmd = list(nsys_prefix) + ["trtllm-llmapi-launch"] if nsys_prefix else ["trtllm-llmapi-launch"]
+        cmd += [
             "python3",
             "-m",
             "dynamo.trtllm",
