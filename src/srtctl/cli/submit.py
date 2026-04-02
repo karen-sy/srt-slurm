@@ -602,6 +602,7 @@ def submit_directory(
     tags: list[str] | None = None,
     force_sweep: bool = False,
     output_dir: Path | None = None,
+    run_name_suffix: str | None = None,
 ) -> None:
     """Submit all YAML configs in a directory recursively.
 
@@ -612,6 +613,7 @@ def submit_directory(
         tags: Optional list of tags
         force_sweep: If True, treat all configs as sweeps
         output_dir: Custom output directory (CLI flag, highest priority)
+        run_name_suffix: Optional suffix for output dir name
     """
     yaml_files = find_yaml_files(directory)
 
@@ -651,12 +653,31 @@ def submit_directory(
 
         try:
             if is_override_config(yaml_file):
-                submit_override(yaml_file, dry_run=dry_run, setup_script=setup_script, tags=tags, output_dir=output_dir)
+                submit_override(
+                    yaml_file,
+                    dry_run=dry_run,
+                    setup_script=setup_script,
+                    tags=tags,
+                    output_dir=output_dir,
+                    run_name_suffix=run_name_suffix,
+                )
             elif force_sweep or is_sweep_config(yaml_file):
-                submit_sweep(yaml_file, dry_run=dry_run, setup_script=setup_script, tags=tags, output_dir=output_dir)
+                submit_sweep(
+                    yaml_file,
+                    dry_run=dry_run,
+                    setup_script=setup_script,
+                    tags=tags,
+                    output_dir=output_dir,
+                    run_name_suffix=run_name_suffix,
+                )
             else:
                 submit_single(
-                    config_path=yaml_file, dry_run=dry_run, setup_script=setup_script, tags=tags, output_dir=output_dir
+                    config_path=yaml_file,
+                    dry_run=dry_run,
+                    setup_script=setup_script,
+                    tags=tags,
+                    output_dir=output_dir,
+                    run_name_suffix=run_name_suffix,
                 )
             success_count += 1
         except Exception as e:
@@ -734,6 +755,7 @@ def submit_override(
     setup_script: str | None = None,
     tags: list[str] | None = None,
     output_dir: Path | None = None,
+    run_name_suffix: str | None = None,
 ) -> None:
     """Expand an override config file and submit each variant.
 
@@ -747,6 +769,7 @@ def submit_override(
         setup_script: Optional custom setup script name
         tags: Optional list of tags
         output_dir: Custom output directory
+        run_name_suffix: Optional suffix for output dir name
     """
     with open(config_path) as f:
         raw_config = yaml.safe_load(f)
@@ -796,6 +819,7 @@ def submit_override(
                     setup_script=setup_script,
                     tags=tags,
                     output_dir=output_dir,
+                    run_name_suffix=suffix,
                 )
             finally:
                 with contextlib.suppress(OSError):
@@ -892,6 +916,13 @@ def main():
             help="YAML config file, directory, or file:selector for overrides",
         )
         p.add_argument("-o", "--output", type=Path, dest="output_dir", help="Custom output directory for job logs")
+        p.add_argument(
+            "--run-name-suffix",
+            type=str,
+            dest="run_name_suffix",
+            default=None,
+            help="Suffix for output dir name (e.g. _myrun -> outputs/12345_myrun)",
+        )
         p.add_argument("--sweep", action="store_true", help="Force sweep mode")
         p.add_argument("-y", "--yes", action="store_true", help="Skip confirmation prompts")
 
@@ -944,6 +975,11 @@ def main():
 
         setup_script = getattr(args, "setup_script", None)
         output_dir = getattr(args, "output_dir", None)
+        run_name_suffix = getattr(args, "run_name_suffix", None)
+
+        if run_name_suffix is None and not is_dry_run and not getattr(args, "yes", False):
+            raw = console.input("[bold cyan]Run name suffix[/] (leave empty to skip): ").strip()
+            run_name_suffix = raw or None
 
         # Handle directory input
         if config_path.is_dir():
@@ -956,6 +992,7 @@ def main():
                 tags=tags,
                 force_sweep=args.sweep,
                 output_dir=output_dir,
+                run_name_suffix=run_name_suffix,
             )
         elif is_override_config(config_path):
             submit_override(
@@ -965,6 +1002,7 @@ def main():
                 setup_script=setup_script,
                 tags=tags,
                 output_dir=output_dir,
+                run_name_suffix=run_name_suffix,
             )
         else:
             if selector:
@@ -972,7 +1010,12 @@ def main():
             is_sweep = args.sweep or is_sweep_config(config_path)
             if is_sweep:
                 submit_sweep(
-                    config_path, dry_run=is_dry_run, setup_script=setup_script, tags=tags, output_dir=output_dir
+                    config_path,
+                    dry_run=is_dry_run,
+                    setup_script=setup_script,
+                    tags=tags,
+                    output_dir=output_dir,
+                    run_name_suffix=run_name_suffix,
                 )
             else:
                 submit_single(
@@ -981,6 +1024,7 @@ def main():
                     setup_script=setup_script,
                     tags=tags,
                     output_dir=output_dir,
+                    run_name_suffix=run_name_suffix,
                 )
     except Exception as e:
         console.print(f"[bold red]Error:[/] {e}")
