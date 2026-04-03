@@ -198,4 +198,6 @@ class TRTLLMProtocol:
             ]
         )
 
+        cmd.append("--publish-events-and-metrics")
+
         return cmd
