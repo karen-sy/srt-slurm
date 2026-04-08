@@ -135,7 +135,7 @@ start_all_profiling
 
 # Per-concurrency benchmark duration: use PROFILE_BENCHMARK_DURATION_SECS if set (nsys-time mode),
 # otherwise default to 300s
-BENCH_DURATION="${PROFILE_BENCHMARK_DURATION_SECS:-300}"
+BENCH_DURATION="${PROFILE_BENCHMARK_DURATION_SECS:-900}"
 
 # Run aiperf profile with fixed-schedule to replay at original timestamps
 for concurrency in "${CONCURRENCY_LIST[@]}"; do

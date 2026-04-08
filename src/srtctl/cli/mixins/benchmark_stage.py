@@ -219,6 +219,10 @@ class BenchmarkStageMixin:
         if p.is_torch:
             env["SGLANG_TORCH_PROFILER_DIR"] = profiles_dir_in_container
 
+        # nsys/nsys-time: pass benchmark duration to override aiperf's default duration
+        if p.is_nsys:
+            env["PROFILE_BENCHMARK_DURATION_SECS"] = str(p.benchmark_duration_secs)
+
         # Collect worker leader IPs and system server ports by mode
         prefill_ips = []
         decode_ips = []
