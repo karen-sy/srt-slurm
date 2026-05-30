@@ -43,6 +43,19 @@ TSV_COLUMNS = [
     "srtslurm_id",
     "config_name",
     "concurrency",
+]
+
+TSV_COLUMNS_CONDP = [
+    "dataset",
+    "srtslurm_id",
+    "config_name",
+    "condp_policy",
+    "max_num_tokens",
+    "concurrency",
+]
+
+# Common columns after the header columns
+_TSV_COLUMNS_TAIL = [
     "request_count",
     "errors [pct]",
     "runtime_error",
@@ -65,6 +78,55 @@ TSV_COLUMNS = [
     "kv_missed_blocks (trtllm_kv_cache_missed_blocks)",
     "kv_hit_rate (calculated)",
 ]
+
+# Assemble full column lists
+TSV_COLUMNS = TSV_COLUMNS + _TSV_COLUMNS_TAIL
+TSV_COLUMNS_CONDP = TSV_COLUMNS_CONDP + _TSV_COLUMNS_TAIL
+
+
+def extract_condp_policy(config: dict) -> str:
+    """Extract conditional prefill policy string from config.
+    
+    Returns:
+        - "N/A" if router-conditional-prefill is not set or false
+        - "{policy} | {isl_threshold} / {ratio_threshold}" if enabled
+    """
+    frontend_args = config.get("frontend", {}).get("args", {})
+    
+    if not frontend_args.get("router-conditional-prefill"):
+        return "N/A"
+    
+    policy = frontend_args.get("router-conditional-prefill-policy", "unknown")
+    isl_threshold = frontend_args.get("router-conditional-prefill-eff-isl-threshold", "?")
+    ratio_threshold = frontend_args.get("router-conditional-prefill-eff-isl-ratio-threshold", "?")
+    
+    return f"{policy} | {isl_threshold} / {ratio_threshold}"
+
+
+def extract_max_num_tokens(config: dict) -> str:
+    """Extract max_num_tokens from trtllm_config.
+    
+    Tries decode first, then prefill, then aggregated.
+    Returns the value as string, or "N/A" if not found.
+    """
+    trtllm_config = config.get("backend", {}).get("trtllm_config", {})
+    
+    # Try decode first (most relevant for throughput)
+    decode_config = trtllm_config.get("decode") or {}
+    if decode_config.get("max_num_tokens"):
+        return str(decode_config["max_num_tokens"])
+    
+    # Try prefill
+    prefill_config = trtllm_config.get("prefill") or {}
+    if prefill_config.get("max_num_tokens"):
+        return str(prefill_config["max_num_tokens"])
+    
+    # Try aggregated
+    agg_config = trtllm_config.get("aggregated") or {}
+    if agg_config.get("max_num_tokens"):
+        return str(agg_config["max_num_tokens"])
+    
+    return "N/A"
 
 
 def load_metrics(csv_path: Path) -> Dict[str, Dict[str, str]]:
@@ -95,6 +157,8 @@ def extract_srtslurm_info(job_dir: Path) -> Dict[str, object]:
         "dataset": "",
         "concurrency": None,
         "gpus": 8,  # default
+        "condp_policy": "N/A",
+        "max_num_tokens": "N/A",
     }
     
     # Parse job ID and config name from directory name
@@ -104,8 +168,10 @@ def extract_srtslurm_info(job_dir: Path) -> Dict[str, object]:
     if len(parts) > 1:
         info["config_name"] = parts[1]
     
-    # Try to load config.yaml for more details
+    # Try to load config.yaml for more details (check both logs/ and job root)
     config_file = job_dir / "logs" / "config.yaml"
+    if not config_file.exists():
+        config_file = job_dir / "config.yaml"
     if config_file.exists():
         try:
             import yaml
@@ -117,6 +183,9 @@ def extract_srtslurm_info(job_dir: Path) -> Dict[str, object]:
                 trace_file = config.get("benchmark", {}).get("trace_file", "")
                 if trace_file:
                     info["dataset"] = Path(trace_file).parent.name
+                # Extract conditional prefill policy and max_num_tokens
+                info["condp_policy"] = extract_condp_policy(config)
+                info["max_num_tokens"] = extract_max_num_tokens(config)
                 # Calculate GPUs from resources
                 resources = config.get("resources", {})
                 agg_workers = resources.get("agg_workers")
@@ -377,6 +446,8 @@ def row_from_srtslurm_job(job_dir: Path, cache_mb_per_1k: float = 34.31) -> Dict
         "dataset": info["dataset"],
         "srtslurm_id": info["srtslurm_id"],
         "config_name": info["config_name"],
+        "condp_policy": info["condp_policy"],
+        "max_num_tokens": info["max_num_tokens"],
         "concurrency": info["concurrency"],
         "request_count": request_count,
         "errors [pct]": errors_combined,
@@ -626,21 +697,23 @@ def format_tsv_value(val) -> str:
     return str(val)
 
 
-def _resolve_columns(row: Dict[str, object]) -> List[str]:
-    """Resolve TSV_COLUMNS, replacing GOODPUT_COL with the actual key from the row."""
+def _resolve_columns(row: Dict[str, object], use_condp: bool = False) -> List[str]:
+    """Resolve column list, replacing GOODPUT_COL with the actual key from the row."""
+    base_columns = TSV_COLUMNS_CONDP if use_condp else TSV_COLUMNS
     actual_goodput_col = next((k for k in row if k.startswith("goodput [")), GOODPUT_COL)
-    return [actual_goodput_col if col == GOODPUT_COL else col for col in TSV_COLUMNS]
+    return [actual_goodput_col if col == GOODPUT_COL else col for col in base_columns]
 
 
-def print_tsv_header(delimiter: str = "\t", row: Dict[str, object] | None = None) -> None:
+def print_tsv_header(delimiter: str = "\t", row: Dict[str, object] | None = None, use_condp: bool = False) -> None:
     """Print header row."""
-    cols = _resolve_columns(row) if row else TSV_COLUMNS
+    base_columns = TSV_COLUMNS_CONDP if use_condp else TSV_COLUMNS
+    cols = _resolve_columns(row, use_condp) if row else base_columns
     print(delimiter.join(cols))
 
 
-def print_tsv_row(row: Dict[str, object], delimiter: str = "\t") -> None:
+def print_tsv_row(row: Dict[str, object], delimiter: str = "\t", use_condp: bool = False) -> None:
     """Print a single row."""
-    cols = _resolve_columns(row)
+    cols = _resolve_columns(row, use_condp)
     values = [format_tsv_value(row.get(col)) for col in cols]
     print(delimiter.join(values))
 
@@ -682,6 +755,11 @@ def main() -> int:
         help="Output comma-separated values instead of tab-separated"
     )
     parser.add_argument(
+        "--condp",
+        action="store_true",
+        help="Include condp_policy column (conditional prefill policy info)"
+    )
+    parser.add_argument(
         "--outputs-dir",
         default=str(SRTSLURM_OUTPUTS_DIR),
         help=f"srtslurm outputs directory (default: {SRTSLURM_OUTPUTS_DIR})"
@@ -699,7 +777,7 @@ def main() -> int:
 
     # Handle --header with no data sources: print header and exit
     if args.header and not args.job_ids and not args.paths:
-        print_tsv_header(delimiter)
+        print_tsv_header(delimiter, use_condp=args.condp)
         return 0
 
     # Collect rows from job IDs
@@ -731,9 +809,9 @@ def main() -> int:
     if args.tsv or args.job_ids or args.csv:
         # TSV/CSV output mode (default for --dir)
         if args.header:
-            print_tsv_header(delimiter, row=all_rows[0])
+            print_tsv_header(delimiter, row=all_rows[0], use_condp=args.condp)
         for row in all_rows:
-            print_tsv_row(row, delimiter)
+            print_tsv_row(row, delimiter, use_condp=args.condp)
     else:
         # CSV file output mode
         output_path = Path(args.output)

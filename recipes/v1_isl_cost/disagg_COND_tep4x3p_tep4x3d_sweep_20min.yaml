@@ -5,9 +5,9 @@ name: disagg_COND_tep4x3p_tep4x3d_eagle-kv-conc24
 identity:
   model:
     repo: nvidia/Kimi-K2.5-NVFP4
-    revision: c0285e649c34d4386b01e38abca642c06cbe014e
+    revision: e4e908c073784de20ad3af0be653421f1088922d
   frameworks:
-    dynamo: 1.2.1
+    dynamo: 1.2.0
     tensorrt_llm: 1.3.0rc16
 
 model:
@@ -72,7 +72,7 @@ backend:
         backend: TRTLLM
       kv_cache_config:
         enable_block_reuse: true
-        free_gpu_memory_fraction: 0.6
+        free_gpu_memory_fraction: 0.75
         iteration_stats_interval: 1
         dtype: fp8
         tokens_per_block: 32
@@ -88,7 +88,7 @@ backend:
         backend: UCX
         max_tokens_in_buffer: 0
         kv_transfer_sender_future_timeout_ms: 30000
-      max_num_tokens: 6400   # conditional disagg needs more on decode. maybe also adjust w/ sweep
+      max_num_tokens: 2048   # conditional disagg needs more on decode. maybe also adjust w/ sweep. 6000 was unstable
       enable_chunked_prefill: true  # regardless of cache hit whole request will be transferred
       cuda_graph_config:
         batch_sizes:
@@ -152,7 +152,7 @@ observability:
   enable_otel: true
   otel_endpoint: "http://10.57.209.4:4317"
 sweep:
-  isl_threshold: [2048, 4096] #[1024, 2048, 4096, 8192]
+  isl_threshold: [2048, 4096, 8192]
 extra_mount:
   - "/lustre/fsw/coreai_dlfw_dev/karenc/srt-slurm/traces:/traces"
   - "/lustre/fsw/coreai_dlfw_dev/karenc/models/Kimi-K2.5-Thinking-Eagle3:/speculative-model"
@@ -163,6 +163,8 @@ benchmark:
   concurrencies: "24"
   ttft_threshold_ms: 5000
   itl_threshold_ms: 10
+  # tokenizer_path: "nvidia/Kimi-K2.5-NVFP4"
+  # aiperf_package: "git+https://github.com/karen-sy/aiperf.git@1027838ebd99f29a772d70b3427f8aed11200b57"
   aiperf_package: "aiperf>=0.7.0"
   aiperf_args:
     benchmark-duration: 1200  # 20min

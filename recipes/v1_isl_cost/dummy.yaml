@@ -1,13 +1,13 @@
 # https://github.com/karen-sy/srt-slurm-nv/blob/fe04d4e267bc97c219b674eb7127a5ee3a3dfe88/recipes/inference_day_pareto/onehour_disagg_eagle_trtllm_native_offload_prefill_decode_nocache_conc32.yaml
 # but no offloading. Currently testing pure disagg vs disagg with c/d. 
 # also changed inference day config (conc32) to conc24 for parity with agg baseline
-name: dummy_tep4x3p_tep4x3d_eagle-kv-conc24
+name: dummy_tep4x1p_tep4x1d_eagle-kv-conc24
 identity:
   model:
     repo: nvidia/Kimi-K2.5-NVFP4
-    revision: c0285e649c34d4386b01e38abca642c06cbe014e
+    revision: e4e908c073784de20ad3af0be653421f1088922d
   frameworks:
-    dynamo: 1.2.1
+    dynamo: 1.2.0
     tensorrt_llm: 1.3.0rc16
 
 model:
@@ -17,11 +17,11 @@ model:
 
 resources:
   gpu_type: gb200
-  prefill_nodes: 3
-  prefill_workers: 3
+  prefill_nodes: 1  ### 1p1d to keep allocation fast
+  prefill_workers: 1
   gpus_per_prefill: 4
-  decode_nodes: 3
-  decode_workers: 3
+  decode_nodes: 1
+  decode_workers: 1
   gpus_per_decode: 4
   gpus_per_node: 4
 slurm:
@@ -35,7 +35,7 @@ backend:
     TRTLLM_KVCACHE_TRANSFER_BUFFER_SIZE: 0B
     DYN_TOOL_CALL_PARSER: kimi_k2
     DYN_REASONING_PARSER: kimi_k25
-    OTEL_SERVICE_NAME: dynamo-dummy-prefill-tep4x3p_tep4x3d-eagle-kv-conc24
+    OTEL_SERVICE_NAME: dynamo-dummy-prefill-tep4x1p_tep4x1d-eagle-kv-conc24
   decode_environment:
     TRTLLM_ENABLE_PDL: '1'
     NCCL_GRAPH_MIXING_SUPPORT: '0'
@@ -45,7 +45,7 @@ backend:
     TRTLLM_TRY_ZCOPY_FOR_KVCACHE_TRANSFER: '1'
     DYN_TOOL_CALL_PARSER: kimi_k2
     DYN_REASONING_PARSER: kimi_k25
-    OTEL_SERVICE_NAME: dynamo-dummy-decode-tep4x3p_tep4x3d-eagle-kv-conc24
+    OTEL_SERVICE_NAME: dynamo-dummy-decode-tep4x1p_tep4x1d-eagle-kv-conc24
   trtllm_config:
     prefill:
       load_format: DUMMY
@@ -138,7 +138,7 @@ frontend:
     router-conditional-prefill-eff-isl-ratio-threshold: 0.80
   enable_multiple_frontends: false
   env:
-    OTEL_SERVICE_NAME: dynamo-dummy-frontend-tep4x3p_tep4x3d-eagle-kv-conc24
+    OTEL_SERVICE_NAME: dynamo-dummy-frontend-tep4x1p_tep4x1d-eagle-kv-conc24
 health_check:
   max_attempts: 500
   interval_seconds: 10
@@ -164,7 +164,8 @@ benchmark:
   concurrencies: "24"
   ttft_threshold_ms: 5000
   itl_threshold_ms: 10
-  aiperf_package: "git+ssh://git@github.com/karen-sy/aiperf.git@1027838ebd99f29a772d70b3427f8aed11200b57" # v0.8.0 w/metrics on conditional prefill fork
+  tokenizer_path: "nvidia/Kimi-K2.5-NVFP4"
+  aiperf_package: "git+https://github.com/karen-sy/aiperf.git@1027838ebd99f29a772d70b3427f8aed11200b57"
   aiperf_args:
     benchmark-duration: 180
     benchmark-grace-period: 60
