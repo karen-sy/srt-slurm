@@ -225,6 +225,7 @@ class BenchmarkType(str, Enum):
     ROUTER = "router"
     MOONCAKE_ROUTER = "mooncake-router"
     TRACE_REPLAY = "trace-replay"
+    TRACE_REPLAY_SA = "trace-replay-sa"
     MMLU = "mmlu"
     GPQA = "gpqa"
     LONGBENCHV2 = "longbenchv2"
@@ -577,6 +578,9 @@ class BenchmarkConfig:
     num_warmup_mult: int | None = None  # Multiplier for warmup prompts = concurrency * mult (default: 2)
     # Trace replay benchmark fields (uses aiperf with mooncake_trace dataset type)
     trace_file: str | None = None  # Path to trace JSONL file (container path, e.g., /traces/dataset.jsonl)
+    # Trace replay (SA) benchmark fields (uses aiperf with --public-dataset, pulled from HuggingFace)
+    public_dataset: str | None = None  # aiperf public-dataset name (e.g. "semianalysis_cc_traces_weka_no_subagents")
+    num_dataset_entries: int | None = None  # Number of dataset entries to load (default: full corpus)
     custom_tokenizer: str | None = None  # Custom tokenizer class (e.g., "module.path.ClassName")
     use_chat_template: bool = True  # Pass --use-chat-template to benchmark (default: true)
     # aiperf pip install spec (e.g., "aiperf>=0.7.0", "aiperf @ git+https://...@commit")

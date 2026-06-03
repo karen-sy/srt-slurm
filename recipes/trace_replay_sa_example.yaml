@@ -1,7 +1,14 @@
-# https://github.com/karen-sy/srt-slurm-nv/blob/fe04d4e267bc97c219b674eb7127a5ee3a3dfe88/recipes/inference_day_pareto/onehour_disagg_eagle_trtllm_native_offload_prefill_decode_nocache_conc32.yaml
-# but no offloading. Currently testing pure disagg vs disagg with c/d. 
-# also changed inference day config (conc32) to conc24 for parity with agg baseline
-name: dummy_tep4x1p_tep4x1d_eagle-kv-conc24
+# Example recipe for the trace-replay-sa benchmark.
+# Replays the SemiAnalysis cc-traces-weka (no-subagents) public dataset, pulled
+# from HuggingFace by aiperf via --public-dataset, as a chat workload.
+#
+# The SemiAnalysis public-dataset loaders are NOT in stock aiperf; they live in
+# cquil11/aiperf@cjq/agentx-v0.3, so aiperf_package below pins that branch.
+#
+# Resources/backend below are copied from recipes/v1_isl_cost/dummy.yaml (a known
+# valid 1P1D Kimi/TRTLLM config) so the recipe validates end-to-end; swap them for
+# your real topology before submitting.
+name: trace_replay_sa_tep4x1p_tep4x1d
 identity:
   model:
     repo: nvidia/Kimi-K2.5-NVFP4
@@ -25,7 +32,7 @@ resources:
   gpus_per_decode: 4
   gpus_per_node: 4
 slurm:
-  time_limit: "00:10:00"
+  time_limit: "00:30:00"
 backend:
   type: trtllm
   prefill_environment:
@@ -35,7 +42,6 @@ backend:
     TRTLLM_KVCACHE_TRANSFER_BUFFER_SIZE: 0B
     DYN_TOOL_CALL_PARSER: kimi_k2
     DYN_REASONING_PARSER: kimi_k25
-    OTEL_SERVICE_NAME: dynamo-dummy-prefill-tep4x1p_tep4x1d-eagle-kv-conc24
   decode_environment:
     TRTLLM_ENABLE_PDL: '1'
     NCCL_GRAPH_MIXING_SUPPORT: '0'
@@ -45,11 +51,9 @@ backend:
     TRTLLM_TRY_ZCOPY_FOR_KVCACHE_TRANSFER: '1'
     DYN_TOOL_CALL_PARSER: kimi_k2
     DYN_REASONING_PARSER: kimi_k25
-    OTEL_SERVICE_NAME: dynamo-dummy-decode-tep4x1p_tep4x1d-eagle-kv-conc24
   trtllm_config:
     prefill:
       load_format: DUMMY
-      otlp_traces_endpoint: "http://10.57.209.4:4317"  # for trtllm spans
       cache_transceiver_config:
         backend: UCX
         max_tokens_in_buffer: 0
@@ -84,7 +88,6 @@ backend:
         speculative_model_dir: /speculative-model
     decode:
       load_format: DUMMY
-      otlp_traces_endpoint: "http://10.57.209.4:4317"  # for trtllm spans
       allreduce_strategy: MNNVL
       cache_transceiver_config:
         backend: UCX
@@ -134,11 +137,9 @@ frontend:
     router-reset-states: true
     router-conditional-prefill: true
     router-conditional-prefill-policy: isl_bounding
-    router-conditional-prefill-eff-isl-threshold: "4096"  # must be far less than decode MNT
+    router-conditional-prefill-eff-isl-threshold: "4096"
     router-conditional-prefill-eff-isl-ratio-threshold: 0.80
   enable_multiple_frontends: false
-  env:
-    OTEL_SERVICE_NAME: dynamo-dummy-frontend-tep4x1p_tep4x1d-eagle-kv-conc24
 health_check:
   max_attempts: 500
   interval_seconds: 10
@@ -150,23 +151,22 @@ infra:
   etcd_nats_dedicated_node: false
   nats_max_payload_mb: 24
 
-observability:
-  enable_otel: true
-  otel_endpoint: "http://10.57.209.4:4317"
-
 extra_mount:
-  - "/lustre/fsw/coreai_dlfw_dev/karenc/srt-slurm/traces:/traces"
   - "/lustre/fsw/coreai_dlfw_dev/karenc/models/Kimi-K2.5-Thinking-Eagle3:/speculative-model"
 
 benchmark:
-  type: trace-replay
-  trace_file: /traces/kv-reuse-difficult_200k-fixed/dataset.jsonl
+  type: trace-replay-sa
+  public_dataset: semianalysis_cc_traces_weka_no_subagents
+  num_dataset_entries: 98
   concurrencies: "24"
   ttft_threshold_ms: 5000
   itl_threshold_ms: 10
-  aiperf_package: "git+https://github.com/karen-sy/aiperf.git@1027838ebd99f29a772d70b3427f8aed11200b57"
+  # The SA public-dataset loaders only exist on the cquil11/aiperf fork (branch cjq/agentx-v0.3).
+  # Pinned to the exact commit verified locally (tip of cjq/agentx-v0.3 as of 2026-05-19).
+  # Branch has since advanced (tip 062a5de, 2026-06-02: weka_trace + server-metrics fixes) — bump if you want the latest.
+  aiperf_package: "git+https://github.com/cquil11/aiperf.git@0f04eb61753858f93f8aef8a5b9f1ae6341b57d5"
   aiperf_args:
-    benchmark-duration: 180
+    benchmark-duration: 1200
     benchmark-grace-period: 60
     request-timeout-seconds: 1200
     workers-max: 200
