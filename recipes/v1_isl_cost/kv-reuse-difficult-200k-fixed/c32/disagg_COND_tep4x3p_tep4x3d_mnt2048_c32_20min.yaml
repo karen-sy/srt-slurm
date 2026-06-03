@@ -96,7 +96,6 @@ backend:
         - 4
         - 8
         - 16
-        - 32
         enable_padding: true
       enable_attention_dp: false
       kv_cache_config:
@@ -104,7 +103,7 @@ backend:
         enable_block_reuse: true
         free_gpu_memory_fraction: 0.75
         tokens_per_block: 32
-      max_batch_size: 32
+      max_batch_size: 16
       moe_config:
         backend: CUTLASS
         use_low_precision_moe_combine: true
@@ -129,6 +128,7 @@ frontend:
   type: dynamo
   args:
     router-mode: kv
+    router-queue-threshold: "None"
     router-reset-states: true
     router-conditional-prefill: true
     router-conditional-prefill-policy: isl_bounding

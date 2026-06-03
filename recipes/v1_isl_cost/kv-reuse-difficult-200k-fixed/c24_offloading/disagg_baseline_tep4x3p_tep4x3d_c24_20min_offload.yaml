@@ -1,6 +1,6 @@
 # https://github.com/karen-sy/srt-slurm-nv/blob/fe04d4e267bc97c219b674eb7127a5ee3a3dfe88/recipes/inference_day_pareto/onehour_disagg_eagle_trtllm_native_offload_prefill_decode_nocache_conc32.yaml
 # but no offloading. Currently testing pure disagg vs disagg with c/d. 
-name: disagg_COND_tep4x3p_tep4x3d_eagle-kv-conc32
+name: disagg_offload_tep4x3p_tep4x3d_eagle-kv-conc24
 identity:
   model:
     repo: nvidia/Kimi-K2.5-NVFP4
@@ -34,7 +34,7 @@ backend:
     TRTLLM_KVCACHE_TRANSFER_BUFFER_SIZE: 0B
     DYN_TOOL_CALL_PARSER: kimi_k2
     DYN_REASONING_PARSER: kimi_k25
-    OTEL_SERVICE_NAME: dynamo-COND-prefill-tep4x3p_tep4x3d-eagle-kv-conc32
+    OTEL_SERVICE_NAME: dynamo-prefill-tep4x3p_tep4x3d-eagle-kv-conc24
   decode_environment:
     TRTLLM_ENABLE_PDL: '1'
     NCCL_GRAPH_MIXING_SUPPORT: '0'
@@ -44,7 +44,7 @@ backend:
     TRTLLM_TRY_ZCOPY_FOR_KVCACHE_TRANSFER: '1'
     DYN_TOOL_CALL_PARSER: kimi_k2
     DYN_REASONING_PARSER: kimi_k25
-    OTEL_SERVICE_NAME: dynamo-COND-decode-tep4x3p_tep4x3d-eagle-kv-conc32
+    OTEL_SERVICE_NAME: dynamo-decode-tep4x3p_tep4x3d-eagle-kv-conc24
   trtllm_config:
     prefill:
       otlp_traces_endpoint: "http://10.57.209.4:4317"  # for trtllm spans
@@ -75,6 +75,8 @@ backend:
         iteration_stats_interval: 1
         dtype: fp8
         tokens_per_block: 32
+        host_cache_size: 107374182400  # 100 GiB host-memory KV offload
+        secondary_offload_min_priority: 35
       speculative_config:
         decoding_type: Eagle
         max_draft_len: 3
@@ -87,8 +89,7 @@ backend:
         backend: UCX
         max_tokens_in_buffer: 0
         kv_transfer_sender_future_timeout_ms: 30000
-      max_num_tokens: 4096   # conditional disagg needs more on decode. maybe also adjust w/ sweep. 6000 was unstable
-      enable_chunked_prefill: true  # regardless of cache hit whole request will be transferred
+      max_num_tokens: 640
       cuda_graph_config:
         batch_sizes:
         - 1
@@ -97,14 +98,15 @@ backend:
         - 8
         - 16
         - 32
+        - 64
         enable_padding: true
       enable_attention_dp: false
       kv_cache_config:
         dtype: fp8
         enable_block_reuse: true
-        free_gpu_memory_fraction: 0.75
+        free_gpu_memory_fraction: 0.85
         tokens_per_block: 32
-      max_batch_size: 32
+      max_batch_size: 64
       moe_config:
         backend: CUTLASS
         use_low_precision_moe_combine: true
@@ -130,13 +132,9 @@ frontend:
   args:
     router-mode: kv
     router-reset-states: true
-    router-conditional-prefill: true
-    router-conditional-prefill-policy: isl_bounding
-    router-conditional-prefill-eff-isl-threshold: "{isl_threshold}"
-    router-conditional-prefill-eff-isl-ratio-threshold: 0.80
   enable_multiple_frontends: false
   env:
-    OTEL_SERVICE_NAME: dynamo-COND-frontend-tep4x3p_tep4x3d-eagle-kv-conc32
+    OTEL_SERVICE_NAME: dynamo-frontend-tep4x3p_tep4x3d-eagle-kv-conc24
 health_check:
   max_attempts: 500
   interval_seconds: 10
@@ -151,8 +149,7 @@ infra:
 observability:
   enable_otel: true
   otel_endpoint: "http://10.57.209.4:4317"
-sweep:
-  isl_threshold: [2048, 4096, 8192]
+
 extra_mount:
   - "/lustre/fsw/coreai_dlfw_dev/karenc/srt-slurm/traces:/traces"
   - "/lustre/fsw/coreai_dlfw_dev/karenc/models/Kimi-K2.5-Thinking-Eagle3:/speculative-model"
@@ -163,11 +160,9 @@ benchmark:
   concurrencies: "32"
   ttft_threshold_ms: 5000
   itl_threshold_ms: 10
-  # tokenizer_path: "nvidia/Kimi-K2.5-NVFP4"
-  # aiperf_package: "git+https://github.com/karen-sy/aiperf.git@1027838ebd99f29a772d70b3427f8aed11200b57"
   aiperf_package: "aiperf==0.8.0"
   aiperf_args:
-    benchmark-duration: 1200  # 20min
+    benchmark-duration: 1200
     benchmark-grace-period: 60
     request-timeout-seconds: 1200
     workers-max: 200

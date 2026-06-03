@@ -177,8 +177,10 @@ def extract_srtslurm_info(job_dir: Path) -> Dict[str, object]:
             import yaml
             with open(config_file) as f:
                 config = yaml.safe_load(f)
-                if not info["config_name"]:
-                    info["config_name"] = config.get("name", "")
+                # Always prefer config.yaml name over directory-derived name
+                config_name = config.get("name", "")
+                if config_name:
+                    info["config_name"] = config_name
                 info["concurrency"] = config.get("benchmark", {}).get("concurrencies")
                 trace_file = config.get("benchmark", {}).get("trace_file", "")
                 if trace_file:
@@ -390,13 +392,46 @@ def check_runtime_errors(job_dir: Path) -> str:
 
 
 def row_from_srtslurm_job(job_dir: Path, cache_mb_per_1k: float = 34.31) -> Dict[str, object] | None:
-    """Extract a row of stats from a srtslurm job directory."""
-    json_path = find_srtslurm_aiperf_json(job_dir)
-    if not json_path:
-        print(f"Warning: No profile_export_aiperf.json found in {job_dir}", file=sys.stderr)
-        return None
+    """Extract a row of stats from a srtslurm job directory.
     
+    If no profile_export_aiperf.json is found (failed run), returns a partial row
+    with config info and runtime error instead of None.
+    """
     info = extract_srtslurm_info(job_dir)
+    json_path = find_srtslurm_aiperf_json(job_dir)
+    
+    if not json_path:
+        # Failed run - return partial row with config and error info
+        runtime_error = check_runtime_errors(job_dir)
+        return {
+            "dataset": info["dataset"],
+            "srtslurm_id": info["srtslurm_id"],
+            "config_name": info["config_name"],
+            "condp_policy": info["condp_policy"],
+            "max_num_tokens": info["max_num_tokens"],
+            "concurrency": info["concurrency"],
+            "request_count": None,
+            "errors [pct]": "",
+            "runtime_error": runtime_error if runtime_error != "v" else "[no aiperf data]",
+            "ttft_avg_ms": None,
+            "ttft_p50_ms": None,
+            "ttft_p99_ms": None,
+            "itl_avg_ms": None,
+            "itl_p50_ms": None,
+            "itl_p99_ms": None,
+            "output_tput_per_user": None,
+            "total_token_tput": None,
+            "total_token_tput_per_gpu": None,
+            "request_tput": None,
+            GOODPUT_COL: None,
+            "kv_total_blocks (dynamo_component_total_blocks)": None,
+            "kv_blocksize (dynamo_frontend_model_kv_cache_block_size)": None,
+            "kv_total_workspace_GiB (calculated)": None,
+            "kv_util_max (trtllm_kv_cache_utilization)": None,
+            "kv_reused_blocks (trtllm_kv_cache_reused_blocks)": None,
+            "kv_missed_blocks (trtllm_kv_cache_missed_blocks)": None,
+            "kv_hit_rate (calculated)": None,
+        }
     
     # Extract KV cache metrics from server_metrics_export.json
     server_metrics_path = find_server_metrics_json(job_dir)
